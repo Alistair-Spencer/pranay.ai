@@ -1,102 +1,252 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Pranay AI</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.tailwindcss.com"></script>
+
   <style>
-    .bubble { max-width: 80%; border-radius: 12px; padding: 10px 12px; }
-    .you    { background:#e5efff }
-    .bot    { background:#f5f5f5 }
+    :root{
+      --bg: #0f172a;           /* slate-900 */
+      --card: #0b1223;         /* darker card */
+      --muted: #93a3b8;        /* slate-400 */
+      --text: #e7eefc;         /* almost white */
+      --brand: #6ea8ff;        /* blue accent */
+      --brand-2:#a78bfa;       /* purple accent */
+      --chip:#1e293b;          /* chip bg */
+      --danger:#ef4444;
+      --ok:#22c55e;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; background: radial-gradient(1200px 700px at 10% -20%, rgba(167,139,250,.25), transparent 60%),
+                 radial-gradient(1200px 700px at 110% 0%, rgba(110,168,255,.25), transparent 60%),
+                 var(--bg);
+      color:var(--text);
+      font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      min-height:100vh;
+      display:flex; align-items:center; justify-content:center;
+      padding:28px;
+    }
+    .shell{ width: min(1100px, 100%); }
+    header{
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:18px;
+    }
+    .brand{
+      display:flex; gap:12px; align-items:center;
+    }
+    .logo{
+      width:44px; height:44px; border-radius:12px;
+      background: linear-gradient(135deg,var(--brand),var(--brand-2));
+      box-shadow: 0 8px 30px rgba(110,168,255,.3);
+    }
+    h1{ font-size:22px; margin:0 }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius:16px; backdrop-filter: blur(10px);
+      box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    }
+    #chat{
+      height: 58vh; overflow:auto; padding:18px;
+      scroll-behavior:smooth;
+    }
+    .msg{ display:flex; gap:12px; margin:12px 0; }
+    .bubble{
+      max-width:75%;
+      padding:12px 14px; border-radius:14px;
+      border:1px solid rgba(255,255,255,.09);
+      background:#0d162c;
+      white-space:pre-wrap;
+    }
+    .you .bubble{
+      margin-left:auto; background:#111b34;
+      border-color:rgba(110,168,255,.35);
+      box-shadow: 0 8px 20px rgba(110,168,255,.18);
+    }
+    .bot .bubble{
+      background:#0b1223;
+    }
+    .meta{ font-size:12px; color:var(--muted); margin-top:6px }
+    .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px }
+    .chip{
+      font-size:12px; padding:4px 8px; border-radius:999px; color:#cbd5e1;
+      background:var(--chip); border:1px solid rgba(255,255,255,.08)
+    }
+    .toolbar{
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      padding:14px 16px; border-top:1px solid rgba(255,255,255,.08);
+    }
+    textarea{
+      flex:1; resize:vertical; min-height:56px; max-height:200px;
+      background:#0b1223; color:var(--text);
+      border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:12px;
+      outline:none;
+    }
+    select, input[type="checkbox"]{ accent-color: var(--brand); }
+    .btn{
+      padding:12px 16px; border-radius:12px; cursor:pointer; border:0;
+      background: linear-gradient(135deg,var(--brand),var(--brand-2));
+      color:#0b1020; font-weight:600; box-shadow: 0 10px 30px rgba(110,168,255,.35);
+    }
+    .btn:disabled{ opacity:.6; cursor:not-allowed }
+    .row{ display:flex; align-items:center; gap:10px }
+    .note{ font-size:12px; color:var(--muted) }
+    .right{ margin-left:auto }
+    .error{ color:var(--danger) }
+    .ok{ color:var(--ok) }
+    .controls{ display:flex; gap:10px; flex-wrap:wrap; align-items:center }
+    .file{
+      display:inline-flex; align-items:center; gap:8px; padding:10px 12px;
+      border-radius:12px; border:1px dashed rgba(255,255,255,.12); color:#cbd5e1
+    }
+    @media (max-width:720px){
+      .bubble{ max-width:100% }
+      .toolbar{ flex-direction:column; align-items:stretch }
+      .right{ margin-left:0 }
+    }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-900">
-  <div class="mx-auto max-w-3xl h-screen flex flex-col">
-    <header class="py-4 flex items-center justify-between">
-      <h1 class="text-2xl font-semibold">Pranay AI</h1>
-      <div class="text-sm text-gray-500">AP Biology • Text + Images</div>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <h1>Pranay AI</h1>
+          <div class="note">Study coach • RAG from your notes • Claude backend</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <label class="row note">
+          <input id="use_docs" type="checkbox" checked /> Use my docs
+        </label>
+
+        <select id="mode" title="Mode">
+          <option value="default">Default</option>
+          <option value="study">Study</option>
+          <option value="fitness">Fitness</option>
+          <option value="biz">Biz</option>
+          <option value="texting">Texting</option>
+        </select>
+      </div>
     </header>
 
-    <main id="chat" class="flex-1 overflow-y-auto space-y-3 p-2"></main>
+    <div class="card" id="chat" aria-live="polite"></div>
 
-    <section class="border-t bg-white p-3 space-y-2">
-      <div class="flex items-center gap-2">
-        <input id="img" type="file" accept="image/png,image/jpeg" class="text-sm">
-        <input id="img_prompt" class="flex-1 border rounded px-3 py-2 text-sm" placeholder="Ask about the image (optional)">
-        <button id="send_img" class="px-4 py-2 bg-gray-900 text-white rounded text-sm">Send Image</button>
-      </div>
-      <div class="flex items-center gap-2">
-        <input id="msg" class="flex-1 border rounded px-3 py-3" placeholder="Type a message... (try: /study What is mitosis?)">
-        <label class="text-sm"><input id="use_docs" type="checkbox" checked> Use my docs</label>
-        <button id="send" class="px-4 py-2 bg-blue-600 text-white rounded">Send</button>
-      </div>
-    </section>
+    <div class="card toolbar">
+      <textarea id="input" placeholder="Ask anything… (tip: /study What is mitosis?)"></textarea>
+      <button id="send" class="btn">Send</button>
+      <span class="right note" id="status"></span>
+      <label class="file">
+        <input id="file" type="file" accept="image/png,image/jpeg" hidden />
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M21 19V5a2 2 0 0 0-2-2H5C3.9 3 3 3.9 3 5v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zm-2 0H5V5h14v14zM8 13l2.03 2.71L12.5 12l3.5 5H8z"/></svg>
+        Add image
+      </label>
+      <button id="sendImage" class="btn" title="Send image + prompt">Send Image</button>
+    </div>
   </div>
 
   <script>
-    const chat = document.getElementById('chat');
-    const msg  = document.getElementById('msg');
-    const send = document.getElementById('send');
-    const useDocs = document.getElementById('use_docs');
+    // === Configure your backend URL here ===
+    const BACKEND = (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
+      ? 'http://127.0.0.1:8000'
+      : 'https://YOUR-BACKEND-HOST';  // e.g. https://pranay-api.onrender.com
 
-    const imgFile = document.getElementById('img');
-    const imgPrompt = document.getElementById('img_prompt');
-    const sendImg = document.getElementById('send_img');
+    const el = (id)=>document.getElementById(id);
+    const chat = el('chat'), input = el('input'), send = el('send');
+    const mode = el('mode'), useDocs = el('use_docs');
+    const fileInput = el('file'), sendImage = el('sendImage');
+    const status = el('status');
 
-    function add(role, text) {
-      const row = document.createElement('div');
-      row.className = 'flex ' + (role === 'you' ? 'justify-end' : 'justify-start');
-      const b = document.createElement('div');
-      b.className = 'bubble ' + (role === 'you' ? 'you' : 'bot');
-      b.textContent = text;
-      row.appendChild(b);
-      chat.appendChild(row);
+    const add = (who, html, sources=[])=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'msg ' + (who==='you' ? 'you' : 'bot');
+      wrap.innerHTML = `<div class="bubble">${html}</div>`;
+      chat.appendChild(wrap);
+
+      if (who!=='you' && Array.isArray(sources) && sources.length){
+        const chips = document.createElement('div'); chips.className = 'chips';
+        for (const s of sources){
+          const c = document.createElement('span');
+          c.className = 'chip';
+          c.textContent = s.source ?? 'source';
+          chips.appendChild(c);
+        }
+        chat.appendChild(chips);
+      }
       chat.scrollTop = chat.scrollHeight;
-    }
+    };
 
-    function addErr(text) {
-      add('bot', '⚠️ ' + text);
-    }
+    const setBusy = (busy, text=''){
+      send.disabled = busy; sendImage.disabled = busy; input.disabled = busy;
+      status.textContent = text;
+      status.className = 'note ' + (busy ? '' : 'ok');
+    };
 
-    async function sendText() {
-      const text = msg.value.trim();
-      if (!text) return;
-      add('you', text); msg.value = '';
-      try {
-        const res = await fetch('/chat', {
+    const escapeHTML = (s)=>s.replace(/[&<>]/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[m]));
+    const md = (s)=>escapeHTML(String(s));
+
+    async function sendText(){
+      const msg = input.value.trim(); if(!msg) return;
+      add('you', md(msg));
+      input.value = ''; setBusy(true, 'Thinking…');
+
+      try{
+        const res = await fetch(`${BACKEND}/chat`,{
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ message: text, use_docs: useDocs.checked })
+          body: JSON.stringify({
+            message: msg,
+            mode: mode.value,
+            use_docs: useDocs.checked,
+            k: 5
+          })
         });
-        if (!res.ok) return addErr('HTTP ' + res.status);
+        if(!res.ok){ throw new Error(`HTTP ${res.status}`); }
         const data = await res.json();
-        add('bot', data.reply || '(no text)');
-      } catch (e) {
-        addErr('Network error: ' + e.message);
+        add('bot', md(data.reply || ''), data.sources || []);
+        setBusy(false, 'Done');
+      }catch(err){
+        console.error(err);
+        add('bot', `<span class="error">Network error. Check server & CORS.</span>`);
+        setBusy(false);
       }
     }
 
-    async function sendImage() {
-      const f = imgFile.files[0];
-      if (!f) return addErr('Choose an image first.');
-      const q = imgPrompt.value || 'Analyze this image.';
-      add('you', `[Image: ${f.name}] ${q}`);
-      const fd = new FormData();
-      fd.append('image', f);
-      fd.append('prompt', q);
-      fd.append('use_docs', useDocs.checked ? 'true' : 'false');
-      try {
-        const res = await fetch('/vision', { method:'POST', body: fd });
-        if (!res.ok) return addErr('HTTP ' + res.status);
+    async function sendWithImage(){
+      const file = fileInput.files?.[0];
+      const msg = input.value.trim();
+      if(!file){ add('bot','<span class="error">Pick an image first.</span>'); return; }
+      add('you', md(`[Image + prompt] ${msg||''}`));
+      setBusy(true, 'Analyzing image…');
+
+      try{
+        // If you implemented /vision (multipart) on the backend:
+        const form = new FormData();
+        form.append('prompt', msg);
+        form.append('use_docs', useDocs.checked ? 'true' : 'false');
+        form.append('file', file);
+
+        const res = await fetch(`${BACKEND}/vision`, { method:'POST', body: form });
+        if(!res.ok){ throw new Error(`HTTP ${res.status}`); }
         const data = await res.json();
-        add('bot', data.reply || '(no text)');
-      } catch (e) { addErr('Upload error: ' + e.message); }
+        add('bot', md(data.reply || ''), data.sources || []);
+        setBusy(false, 'Done');
+      }catch(err){
+        console.error(err);
+        add('bot', `<span class="error">Image endpoint not found. Implement /vision on server or hide the button.</span>`);
+        setBusy(false);
+      }
     }
 
-    send.onclick = sendText;
-    msg.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }});
-    sendImg.onclick = sendImage;
+    send.addEventListener('click', sendText);
+    input.addEventListener('keydown', e=>{
+      if(e.key==='Enter' && (e.ctrlKey || e.metaKey)){ sendText(); }
+    });
+    sendImage.addEventListener('click', sendWithImage);
   </script>
 </body>
 </html>

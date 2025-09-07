@@ -1,12 +1,9 @@
-import sys, os
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))  # allow 'from retriever import Retriever'
-import os, re, glob
+import os, re
 from dataclasses import dataclass
 from typing import List, Dict, Any, Iterable
 
 import chromadb
 from pypdf import PdfReader
-
 from sentence_transformers import SentenceTransformer
 
 @dataclass
@@ -15,8 +12,12 @@ class DocChunk:
     metadata: Dict[str, Any]
 
 def _read_pdf(path: str) -> str:
-    reader = PdfReader(path)
-    return "\n".join([(p.extract_text() or "") for p in reader.pages])
+    try:
+        reader = PdfReader(path)
+        return "\n".join([(p.extract_text() or "") for p in reader.pages])
+    except Exception:
+        # if encrypted/unsupported, skip gracefully
+        return ""
 
 def _read_text_file(path: str) -> str:
     with open(path, "r", encoding="utf-8", errors="ignore") as f:
@@ -37,11 +38,8 @@ class Retriever:
     def __init__(self, persist_dir: str = "chroma_db", embeddings_backend: str = "local"):
         self.persist_dir = persist_dir
         self.client = chromadb.PersistentClient(path=self.persist_dir)
-        self.collection = self.client.get_or_create_collection(
-            name="pranay_chunks", metadata={"hnsw:space": "cosine"}
-        )
-        # Local, free embedder (CPU ok)
-        self.model = SentenceTransformer("all-MiniLM-L6-v2")  # ~384-dim, fast
+        self.collection = self.client.get_or_create_collection(name="pranay_chunks", metadata={"hnsw:space": "cosine"})
+        self.model = SentenceTransformer("all-MiniLM-L6-v2")  # small, fast, CPU OK
 
     def is_ready(self) -> bool:
         return self.collection.count() > 0
@@ -59,12 +57,13 @@ class Retriever:
                 content = _read_text_file(path)
             else:
                 continue
+            if not content.strip():
+                continue
 
             for i, ch in enumerate(_chunk_text(content)):
                 docs.append(ch)
                 metas.append({"source": os.path.basename(path)})
                 ids.append(f"{os.path.basename(path)}-{i}")
-
                 if len(docs) >= 256:
                     self._add_batch(ids, docs, metas)
                     docs, metas, ids = [], [], []
@@ -72,12 +71,11 @@ class Retriever:
             self._add_batch(ids, docs, metas)
 
     def _add_batch(self, ids, docs, metas):
-        embeddings = self._embed(docs)
-        self.collection.add(ids=ids, embeddings=embeddings, documents=docs, metadatas=metas)
+        emb = self._embed(docs)
+        self.collection.add(ids=ids, embeddings=emb, documents=docs, metadatas=metas)
 
     def search(self, query: str, k: int = 5) -> List[DocChunk]:
-        if not query.strip():
-            return []
+        if not query.strip(): return []
         q_emb = self._embed([query])
         res = self.collection.query(query_embeddings=q_emb, n_results=k)
         docs = res.get("documents", [[]])[0]
@@ -85,13 +83,6 @@ class Retriever:
         dists = res.get("distances", [[]])[0]
         out: List[DocChunk] = []
         for text, meta, dist in zip(docs, metas, dists):
-            out.append(
-                DocChunk(
-                    text=text,
-                    metadata={
-                        "source": meta.get("source", "unknown"),
-                        "score": (1.0 - dist) if dist is not None else None,
-                    },
-                )
-            )
+            out.append(DocChunk(text=text, metadata={"source": meta.get("source","unknown"),
+                                                     "score": (1.0 - dist) if dist is not None else None}))
         return out
