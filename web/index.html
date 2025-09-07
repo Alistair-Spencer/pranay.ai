@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Pranay AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .bubble { max-width: 80%; border-radius: 12px; padding: 10px 12px; }
+    .you    { background:#e5efff }
+    .bot    { background:#f5f5f5 }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <div class="mx-auto max-w-3xl h-screen flex flex-col">
+    <header class="py-4 flex items-center justify-between">
+      <h1 class="text-2xl font-semibold">Pranay AI</h1>
+      <div class="text-sm text-gray-500">AP Biology • Text + Images</div>
+    </header>
+
+    <main id="chat" class="flex-1 overflow-y-auto space-y-3 p-2"></main>
+
+    <section class="border-t bg-white p-3 space-y-2">
+      <div class="flex items-center gap-2">
+        <input id="img" type="file" accept="image/png,image/jpeg" class="text-sm">
+        <input id="img_prompt" class="flex-1 border rounded px-3 py-2 text-sm" placeholder="Ask about the image (optional)">
+        <button id="send_img" class="px-4 py-2 bg-gray-900 text-white rounded text-sm">Send Image</button>
+      </div>
+      <div class="flex items-center gap-2">
+        <input id="msg" class="flex-1 border rounded px-3 py-3" placeholder="Type a message... (try: /study What is mitosis?)">
+        <label class="text-sm"><input id="use_docs" type="checkbox" checked> Use my docs</label>
+        <button id="send" class="px-4 py-2 bg-blue-600 text-white rounded">Send</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const chat = document.getElementById('chat');
+    const msg  = document.getElementById('msg');
+    const send = document.getElementById('send');
+    const useDocs = document.getElementById('use_docs');
+
+    const imgFile = document.getElementById('img');
+    const imgPrompt = document.getElementById('img_prompt');
+    const sendImg = document.getElementById('send_img');
+
+    function add(role, text) {
+      const row = document.createElement('div');
+      row.className = 'flex ' + (role === 'you' ? 'justify-end' : 'justify-start');
+      const b = document.createElement('div');
+      b.className = 'bubble ' + (role === 'you' ? 'you' : 'bot');
+      b.textContent = text;
+      row.appendChild(b);
+      chat.appendChild(row);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function addErr(text) {
+      add('bot', '⚠️ ' + text);
+    }
+
+    async function sendText() {
+      const text = msg.value.trim();
+      if (!text) return;
+      add('you', text); msg.value = '';
+      try {
+        const res = await fetch('/chat', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ message: text, use_docs: useDocs.checked })
+        });
+        if (!res.ok) return addErr('HTTP ' + res.status);
+        const data = await res.json();
+        add('bot', data.reply || '(no text)');
+      } catch (e) {
+        addErr('Network error: ' + e.message);
+      }
+    }
+
+    async function sendImage() {
+      const f = imgFile.files[0];
+      if (!f) return addErr('Choose an image first.');
+      const q = imgPrompt.value || 'Analyze this image.';
+      add('you', `[Image: ${f.name}] ${q}`);
+      const fd = new FormData();
+      fd.append('image', f);
+      fd.append('prompt', q);
+      fd.append('use_docs', useDocs.checked ? 'true' : 'false');
+      try {
+        const res = await fetch('/vision', { method:'POST', body: fd });
+        if (!res.ok) return addErr('HTTP ' + res.status);
+        const data = await res.json();
+        add('bot', data.reply || '(no text)');
+      } catch (e) { addErr('Upload error: ' + e.message); }
+    }
+
+    send.onclick = sendText;
+    msg.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }});
+    sendImg.onclick = sendImage;
+  </script>
+</body>
+</html>
