@@ -1,48 +1,23 @@
-# --- Python build & cache ---
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-
-# Virtual envs
+# Ignore Python environment
 .venv/
+env/
 venv/
 
-# Editors / OS
+# Ignore cache and build artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+
+# Ignore local data
+chroma_db/
+data/
+
+# Ignore OS/system files
 .DS_Store
 Thumbs.db
-.vscode/
-.idea/
 
-# Logs
-*.log
-
-# Secrets
+# Ignore secrets
 .env
-*.env
-.env.*
-
-# Local vector DB + caches
-chroma_db/
-chroma.sqlite3
-chroma.sqlite
-chroma/
-*.sqlite3
-
-# Data you don't want in the repo
-data/
-*.pdf
-*.png
-*.jpg
-*.jpeg
-
-# HuggingFace / transformers caches
-~/.cache/
-cache/
-hf_cache/
-transformers_cache/
-
-# Node/web build junk (if added later)
-node_modules/
-dist/
-build/
