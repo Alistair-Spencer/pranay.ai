@@ -4,172 +4,199 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pranay AI</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root{
+      --bg:#0f1223; --card:#161a31; --ink:#e7e9ff; --muted:#9aa3c7;
+      --brand:#845ef7; --brand-2:#7048e8; --chip:#1e2446;
+      --border:rgba(255,255,255,.08);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; background:radial-gradient(1200px 700px at 20% -10%, #1c1f39 0%, #0f1223 50%, #0f1223 100%);
+      color:var(--ink); font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    .wrap{max-width:980px; margin:32px auto; padding:0 20px}
+    .row{display:flex; align-items:center; gap:12px}
+    .logo{
+      width:28px; height:28px; border-radius:8px;
+      background:linear-gradient(145deg, #9b5cff, #5f8bff);
+      box-shadow:0 8px 30px rgba(132,94,247,.35);
+    }
+    h1{font-size:18px; margin:0}
+    .muted{color:var(--muted); font-size:13px}
+
+    .chip{background:var(--chip); color:#cdd5ff; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid var(--border)}
+    .card{
+      background:var(--card); border:1px solid var(--border);
+      border-radius:14px; padding:16px; margin-top:16px;
+      min-height:360px; display:flex; flex-direction:column; gap:10px;
+    }
+    #chat{flex:1; overflow:auto; padding-right:6px}
+    .msg{margin:6px 0}
+    .you{color:#fff;font-weight:600}
+    .bot{color:#e9e9ff}
+    .sources{font-size:12px; color:var(--muted)}
+
+    .composer{display:flex; gap:10px; align-items:flex-end; margin-top:8px}
+    textarea{
+      flex:1; resize:none; height:56px; max-height:160px;
+      background:#0f1430; color:var(--ink);
+      border:1px solid var(--border); border-radius:12px; padding:12px;
+      outline:none;
+    }
+    .btn{
+      height:44px; padding:0 16px; border-radius:12px; border:1px solid var(--border);
+      background:var(--brand); color:white; cursor:pointer; font-weight:600;
+    }
+    .btn:disabled{opacity:.5; cursor:not-allowed}
+    .btn-ghost{background:transparent; color:#cfd6ff}
+    .toolbar{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px}
+    input[type="file"]{display:inline-block}
+    label{user-select:none}
+    a{color:#a9b7ff}
+  </style>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100">
-  <div class="max-w-3xl mx-auto p-6 space-y-4">
-    <header class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-400 to-fuchsia-500"></div>
+<body>
+  <div class="wrap">
+    <div class="row">
+      <div class="logo"></div>
       <div>
-        <h1 class="text-xl font-semibold">Pranay AI</h1>
-        <p class="text-slate-400 text-sm">Study coach · RAG from your notes</p>
+        <h1>Pranay AI</h1>
+        <div class="muted">Study coach · RAG from your notes · Claude backend</div>
       </div>
-      <div class="ml-auto flex items-center gap-2">
-        <label class="flex items-center gap-2 text-sm">
-          <input id="use_docs" type="checkbox" class="accent-indigo-500" checked />
-          Use my docs
-        </label>
-        <select id="mode" class="bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-sm">
-          <option value="default">Default</option>
-          <option value="study">Study</option>
-          <option value="fitness">Fitness</option>
-          <option value="biz">Biz</option>
-          <option value="texting">Texting</option>
-        </select>
-      </div>
-    </header>
+      <div style="margin-left:auto" class="chip">API: <span id="health">checking…</span></div>
+    </div>
 
-    <div id="status" class="text-xs text-slate-400"></div>
-
-    <main id="chat" class="h-[60vh] overflow-auto rounded-xl border border-slate-800 bg-slate-900/40 p-4 space-y-3"></main>
-
-    <section class="space-y-3">
-      <div class="flex gap-2">
-        <textarea id="input" class="flex-1 resize-none bg-slate-900 border border-slate-800 rounded-lg p-3 outline-none"
-          rows="2" placeholder="Type a message… (try /study What is mitosis?)"></textarea>
-        <button id="send" class="px-4 py-2 bg-indigo-600 rounded-lg disabled:opacity-50">Send</button>
+    <div class="card" id="card">
+      <div class="toolbar">
+        <div>
+          <label><input id="use_docs" type="checkbox" checked /> Use my docs</label>
+          <select id="mode">
+            <option value="default" selected>Default</option>
+            <option value="study">Study</option>
+            <option value="fitness">Fitness</option>
+            <option value="biz">Biz</option>
+            <option value="texting">Texting</option>
+          </select>
+        </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2 text-sm">
-        <label class="inline-flex items-center gap-2">
-          <input id="img" type="file" accept="image/png,image/jpeg" />
-          Add image
-        </label>
-        <input id="img_prompt" class="flex-1 min-w-[220px] bg-slate-900 border border-slate-800 rounded-lg p-2"
-          placeholder="Describe the image or ask a question" />
-        <button id="send_img" class="px-3 py-2 bg-fuchsia-600 rounded-lg disabled:opacity-50">Send image</button>
+      <div id="chat" aria-live="polite"></div>
+
+      <div class="composer">
+        <textarea id="input" placeholder="Type a message… (try /study What is mitosis?)"></textarea>
+        <button id="send" class="btn">Send</button>
       </div>
-    </section>
+
+      <div class="toolbar">
+        <div>
+          <input id="file" type="file" accept=".png,.jpg,.jpeg" />
+          <input id="alt" type="text" placeholder="Describe the image or ask a question" style="width:320px; background:#0f1430; border:1px solid var(--border); border-radius:10px; padding:8px; color:var(--ink)" />
+          <button id="sendImg" class="btn btn-ghost">Send image</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
-    // --- Elements
-    const chatEl = document.getElementById('chat');
-    const inputEl = document.getElementById('input');
-    const sendBtn = document.getElementById('send');
-    const useDocsEl = document.getElementById('use_docs');
-    const modeEl = document.getElementById('mode');
-    const statusEl = document.getElementById('status');
-    const imgEl = document.getElementById('img');
-    const imgPromptEl = document.getElementById('img_prompt');
-    const sendImgBtn = document.getElementById('send_img');
+    // No overlays. Make everything focusable & clickable.
+    const chatEl   = document.getElementById('chat');
+    const inputEl  = document.getElementById('input');
+    const sendBtn  = document.getElementById('send');
+    const imgBtn   = document.getElementById('sendImg');
+    const fileEl   = document.getElementById('file');
+    const altEl    = document.getElementById('alt');
+    const useDocs  = document.getElementById('use_docs');
+    const modeSel  = document.getElementById('mode');
+    const healthEl = document.getElementById('health');
 
-    // --- Helpers
-    function add(role, text) {
-      const wrap = document.createElement('div');
-      wrap.className = 'space-y-1';
-      const who = document.createElement('div');
-      who.className = 'text-xs text-slate-400';
-      who.textContent = role === 'you' ? 'You' : 'Pranay';
-      const bubble = document.createElement('div');
-      bubble.className = role === 'you'
-        ? 'bg-slate-800 rounded-lg p-3'
-        : 'bg-slate-900 rounded-lg p-3 border border-slate-800';
-      bubble.textContent = text;
-      wrap.appendChild(who); wrap.appendChild(bubble);
-      chatEl.appendChild(wrap);
-      chatEl.scrollTop = chatEl.scrollHeight;
-    }
+    // Health check — same origin
+    fetch('/healthz').then(r => r.ok ? 'healthy' : 'unhealthy')
+      .then(t => { healthEl.textContent = t; })
+      .catch(() => { healthEl.textContent = 'unreachable'; });
 
-    function addSources(sources) {
-      if (!sources || !sources.length) return;
+    function add(role, html){
       const div = document.createElement('div');
-      div.className = 'text-xs text-slate-400';
-      div.textContent = 'Sources: ' + sources.map(s => s.source).join(', ');
+      div.className = 'msg ' + (role === 'you' ? 'you' : 'bot');
+      div.innerHTML = (role === 'you' ? '<span class="you">You:</span> ' : '<span class="bot">Pranay:</span> ') + html;
       chatEl.appendChild(div);
       chatEl.scrollTop = chatEl.scrollHeight;
     }
-
-    function setBusy(ok) {
-      sendBtn.disabled = !ok;
-      sendImgBtn.disabled = !ok;
-      inputEl.disabled = !ok;
-      imgEl.disabled = !ok;
-      imgPromptEl.disabled = !ok;
+    function addSources(list){
+      if(!list || !list.length) return;
+      const d = document.createElement('div');
+      d.className = 'sources';
+      d.textContent = 'Sources: ' + list.map(s => s.source).join(', ');
+      chatEl.appendChild(d);
+      chatEl.scrollTop = chatEl.scrollHeight;
     }
-
-    async function checkHealth() {
-      try {
-        const r = await fetch('/healthz', { method: 'GET' });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        statusEl.textContent = 'API: healthy';
-        setBusy(false); // enable inputs
-        setBusy(true);  // temporarily to require first user action
-        setBusy(false);
-      } catch (e) {
-        statusEl.textContent = 'API: not reachable. If this is Render free plan, it may be waking up…';
-        setBusy(false); // let the user try; the server may wake on first request
-      }
-    }
-
-    async function send() {
-      const msg = inputEl.value.trim(); if (!msg) return;
+    async function askText(){
+      const msg = inputEl.value.trim();
+      if(!msg) return;
       add('you', msg);
       inputEl.value = '';
-      try {
+      sendBtn.disabled = true;
+      try{
         const res = await fetch('/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
           body: JSON.stringify({
             message: msg,
-            use_docs: useDocsEl.checked,
-            mode: modeEl.value
+            use_docs: useDocs.checked,
+            mode: modeSel.value
           })
         });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        add('bot', data.reply || '(no reply)');
-        addSources(data.sources);
-      } catch (err) {
-        add('bot', '⚠️ Network error: ' + String(err.message || err));
-        console.error(err);
+        if(!res.ok){
+          const t = await res.text();
+          add('bot', '⚠️ Error: ' + t);
+        }else{
+          const data = await res.json();
+          add('bot', data.reply);
+          addSources(data.sources);
+        }
+      }catch(e){
+        add('bot', '⚠️ Network error: ' + e.message);
+      }finally{
+        sendBtn.disabled = false;
+        inputEl.focus();
+      }
+    }
+    async function sendImage(){
+      const f = fileEl.files && fileEl.files[0];
+      if(!f){ add('bot','Please choose an image first.'); return; }
+      const form = new FormData();
+      form.append('file', f);
+      form.append('alt', altEl.value || '');
+      form.append('use_docs', useDocs.checked ? '1' : '0');
+      form.append('mode', modeSel.value);
+      imgBtn.disabled = true;
+      add('you', '[Image uploaded: ' + f.name + '] ' + (altEl.value || ''));
+      try{
+        const res = await fetch('/vision', { method:'POST', body: form });
+        const txt = await res.text();
+        try{
+          const data = JSON.parse(txt);
+          add('bot', data.reply || '(no reply)');
+          addSources(data.sources || []);
+        }catch{
+          add('bot','⚠️ ' + txt);
+        }
+      }catch(e){
+        add('bot','⚠️ Network error: ' + e.message);
+      }finally{
+        imgBtn.disabled = false;
+        fileEl.value = ''; altEl.value = '';
       }
     }
 
-    async function sendImage() {
-      const file = imgEl.files?.[0];
-      const prompt = imgPromptEl.value || '';
-      if (!file) { alert('Choose an image first'); return; }
-      add('you', `[Image + prompt] ${prompt}`);
-      try {
-        const buf = await file.arrayBuffer();
-        const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-        const res = await fetch('/vision', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt,
-            image_base64: b64,
-            filename: file.name
-          })
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
-        add('bot', data.reply || '(no reply)');
-      } catch (err) {
-        add('bot', '⚠️ Image error: ' + String(err.message || err));
-        console.error(err);
-      }
-    }
-
-    sendBtn.addEventListener('click', send);
-    inputEl.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) send();
+    // Wire up
+    sendBtn.addEventListener('click', askText);
+    imgBtn.addEventListener('click', sendImage);
+    inputEl.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)) askText();
     });
-    sendImgBtn.addEventListener('click', sendImage);
-
-    // On load, check API
-    checkHealth();
   </script>
 </body>
 </html>
