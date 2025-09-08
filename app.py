@@ -6,19 +6,20 @@ from fastapi import FastAPI, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
-from anthropic import Anthropic
 from dotenv import load_dotenv
+from anthropic import Anthropic
+from openai import OpenAI  # OpenAI embeddings (tiny memory)
 
-# RAG stack
+# Vector store + parsing
 import chromadb
 from chromadb.config import Settings
-from sentence_transformers import SentenceTransformer
 from pypdf import PdfReader
 
 # ------------------ Env & App ------------------ #
 load_dotenv()
+
 ALLOWED = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
-app = FastAPI(title="PranayAI", version="3.2.0")
+app = FastAPI(title="PranayAI", version="4.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED if ALLOWED != ["*"] else ["*"],
@@ -27,24 +28,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# LLM (Claude)
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20240620")
-VECTOR_DIR = os.getenv("VECTOR_DIR", "./chroma_store")
-COLLECTION_NAME = "pernai"
-
 anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
-# Chroma client
+# Embeddings (OpenAI) — very light memory footprint
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+EMBED_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+
+# Chroma (persists to disk if VECTOR_DIR points to /data/chroma_store on Render)
+VECTOR_DIR = os.getenv("VECTOR_DIR", "./chroma_store")
+COLLECTION_NAME = os.getenv("COLLECTION_NAME", "pernai")
 chroma_client = chromadb.Client(Settings(persist_directory=VECTOR_DIR))
 collection = chroma_client.get_or_create_collection(COLLECTION_NAME)
-
-# Embedding model
-embedder = SentenceTransformer("all-MiniLM-L6-v2")
 
 # ------------------ Helpers ------------------ #
 def require_anthropic():
     if anthropic_client is None:
         return "Anthropic not ready. Set ANTHROPIC_API_KEY."
+    return None
+
+def require_openai():
+    if openai_client is None:
+        return "OpenAI embeddings not ready. Set OPENAI_API_KEY."
     return None
 
 def extract_text_blocks(msg) -> str:
@@ -81,22 +89,34 @@ def read_any_file(file: UploadFile) -> str:
     elif name.endswith(".txt") or name.endswith(".md"):
         return raw.decode("utf-8", errors="ignore")
     else:
-        # Treat unknowns as text; change if you want to reject
+        # Treat unknowns as text (safe default)
         return raw.decode("utf-8", errors="ignore")
 
 def stable_doc_id(filename: str) -> str:
-    """
-    Stable ID namespace per source file. Using lowercase filename hash is
-    simple and works well for dedupe across re-ingests.
-    """
     return hashlib.md5(filename.strip().lower().encode("utf-8")).hexdigest()
 
-def embed_texts(chunks: List[str]) -> List[List[float]]:
-    vecs = embedder.encode(chunks, convert_to_numpy=True)
-    return [v.tolist() for v in vecs]
+# ---------- OpenAI embedding helpers ---------- #
+def _embed_batch(texts: List[str]) -> List[List[float]]:
+    """Call OpenAI embeddings for a batch of texts."""
+    res = openai_client.embeddings.create(model=EMBED_MODEL, input=texts)
+    # returned in same order
+    return [row.embedding for row in res.data]
+
+def embed_texts(texts: List[str], batch_size: int = 64) -> List[List[float]]:
+    """Batch to avoid large requests; preserves order."""
+    err = require_openai()
+    if err:
+        raise RuntimeError(err)
+    out: List[List[float]] = []
+    for i in range(0, len(texts), batch_size):
+        out.extend(_embed_batch(texts[i:i+batch_size]))
+    return out
+
+def embed_query(q: str) -> List[float]:
+    return embed_texts([q])[0]
 
 def retrieve(query: str, top_k: int = 5):
-    q_vec = embedder.encode([query], convert_to_numpy=True)[0].tolist()
+    q_vec = embed_query(query)
     res = collection.query(query_embeddings=[q_vec], n_results=top_k, include=["documents","metadatas"])
     docs = (res.get("documents") or [[]])[0]
     metas = (res.get("metadatas") or [[]])[0]
@@ -115,18 +135,23 @@ class ChatResponse(BaseModel):
     sources: Optional[List[dict]] = None
 
 # ------------------ Routes ------------------ #
-
 @app.get("/")
 def root():
     return {
         "message": "Welcome to PranayAI 🚀",
         "routes": ["/health", "/chat", "/chat-image", "/ingest", "/list", "/delete"],
-        "note": "This is the API backend. Use /chat or /chat-image for AI responses."
+        "note": "Backend is running. Use /chat or /chat-image; /ingest to upload PDFs/TXT/MD."
     }
 
 @app.get("/health")
 def health():
-    return {"ok": True, "anthropic_ready": anthropic_client is not None, "model": CLAUDE_MODEL}
+    return {
+        "ok": True,
+        "anthropic_ready": anthropic_client is not None,
+        "openai_ready": openai_client is not None,
+        "model": CLAUDE_MODEL,
+        "embed_model": EMBED_MODEL
+    }
 
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
@@ -138,6 +163,8 @@ def chat(req: ChatRequest):
     sources = []
 
     if req.use_rag:
+        err2 = require_openai()
+        if err2: return ChatResponse(reply=err2)
         results = retrieve(req.message, req.top_k)
         for doc, meta in results:
             context_blocks.append(f"[{meta.get('source','unknown')}] {doc}")
@@ -161,7 +188,7 @@ async def chat_image(file: UploadFile = File(...), prompt: str = Form("Extract t
     b64, media_type = image_to_base64_jpeg(raw)
     content = [
         {"type":"text","text":prompt},
-      {"type":"image","source":{"type":"base64","media_type":media_type,"data":b64}}
+        {"type":"image","source":{"type":"base64","media_type":media_type,"data":b64}}
     ]
     msg = anthropic_client.messages.create(
         model=CLAUDE_MODEL, max_tokens=1000,
@@ -170,36 +197,33 @@ async def chat_image(file: UploadFile = File(...), prompt: str = Form("Extract t
     return ChatResponse(reply=extract_text_blocks(msg))
 
 # ---------- Data management: ingest / list / delete ---------- #
-
 @app.post("/ingest")
 async def ingest(files: List[UploadFile] = File(...)):
     """
-    Upload one or more files. Dedupe-by-filename:
-    - Before inserting, delete any existing chunks where {"source": filename}.
-    - Create stable chunk IDs based on filename-hash + chunk index.
+    Upload one or more files. Dedupe-by-filename: delete previous chunks first.
     """
+    if openai_client is None:
+        return {"error": "OpenAI embeddings not configured. Set OPENAI_API_KEY."}
+
     report: List[Dict[str, Any]] = []
 
     for f in files:
         filename = f.filename
-        # Delete any previous chunks for this source
+        # Remove prior chunks for this file (safe if none)
         try:
             collection.delete(where={"source": filename})
         except Exception:
-            # OK if nothing to delete
             pass
 
-        # Read & chunk
         text = read_any_file(f)
         chunks = chunk_text(text)
         if not chunks:
             report.append({"file": filename, "chunks": 0, "status": "empty-or-unreadable"})
             continue
 
-        # Embed & upsert with stable IDs
         vecs = embed_texts(chunks)
-        doc_ns = stable_doc_id(filename)
-        ids = [f"{doc_ns}-{i}" for i in range(len(chunks))]
+        ns = stable_doc_id(filename)
+        ids = [f"{ns}-{i}" for i in range(len(chunks))]
         metas = [{"source": filename, "chunk": i} for i in range(len(chunks))]
 
         collection.add(ids=ids, documents=chunks, embeddings=vecs, metadatas=metas)
@@ -209,10 +233,6 @@ async def ingest(files: List[UploadFile] = File(...)):
 
 @app.get("/list")
 def list_sources():
-    """
-    Return a compact list of sources (filenames) currently in the collection.
-    """
-    # Chroma doesn't expose a native "distinct" list; fetch a sample and group
     results = collection.get(include=["metadatas"], limit=100000)
     metas = results.get("metadatas") or []
     sources = []
@@ -229,9 +249,6 @@ def list_sources():
 
 @app.post("/delete")
 def delete_source(source: str = Query(..., description="Exact filename as shown in /list")):
-    """
-    Delete all chunks for a given source (filename).
-    """
     try:
         collection.delete(where={"source": source})
         return {"deleted": source}
