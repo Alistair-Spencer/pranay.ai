@@ -3,200 +3,304 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pranay AI</title>
+  <title>PranayAI</title>
   <style>
-    :root{
-      --bg:#0f1223; --card:#161a31; --ink:#e7e9ff; --muted:#9aa3c7;
-      --brand:#845ef7; --brand-2:#7048e8; --chip:#1e2446;
-      --border:rgba(255,255,255,.08);
+    :root {
+      --bg: #0b0c10; --card:#11131a; --ink:#e9ecf1; --muted:#aab3c0; --acc:#6aa2ff; --acc2:#4dd6a9; --danger:#ff6a6a;
+      --br: 12px;
     }
     *{box-sizing:border-box}
-    html,body{height:100%}
     body{
-      margin:0; background:radial-gradient(1200px 700px at 20% -10%, #1c1f39 0%, #0f1223 50%, #0f1223 100%);
-      color:var(--ink); font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 600px at 80% -10%, #1a2333, transparent 50%), var(--bg);
+      color: var(--ink);
     }
-    .wrap{max-width:980px; margin:32px auto; padding:0 20px}
-    .row{display:flex; align-items:center; gap:12px}
-    .logo{
-      width:28px; height:28px; border-radius:8px;
-      background:linear-gradient(145deg, #9b5cff, #5f8bff);
-      box-shadow:0 8px 30px rgba(132,94,247,.35);
+    header{
+      padding: 28px 20px; text-align:center;
+      border-bottom: 1px solid #1f2533;
+      background: linear-gradient(180deg, rgba(106,162,255,.08), transparent);
     }
-    h1{font-size:18px; margin:0}
-    .muted{color:var(--muted); font-size:13px}
+    header h1{ margin:0 0 6px; font-size: 28px; letter-spacing:.3px }
+    header p{ margin:0; color:var(--muted) }
 
-    .chip{background:var(--chip); color:#cdd5ff; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid var(--border)}
+    .wrap{ max-width: 980px; margin: 24px auto 80px; padding: 0 16px }
+
+    .grid{
+      display:grid; gap:16px;
+      grid-template-columns: repeat(12, 1fr);
+    }
     .card{
-      background:var(--card); border:1px solid var(--border);
-      border-radius:14px; padding:16px; margin-top:16px;
-      min-height:360px; display:flex; flex-direction:column; gap:10px;
+      background: var(--card); border:1px solid #202534; border-radius: var(--br);
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      padding: 16px;
     }
-    #chat{flex:1; overflow:auto; padding-right:6px}
-    .msg{margin:6px 0}
-    .you{color:#fff;font-weight:600}
-    .bot{color:#e9e9ff}
-    .sources{font-size:12px; color:var(--muted)}
+    .span-12{ grid-column: span 12 }
+    .span-8{ grid-column: span 8 }
+    .span-4{ grid-column: span 4 }
+    @media (max-width: 900px){ .span-8,.span-4{ grid-column: span 12 } }
 
-    .composer{display:flex; gap:10px; align-items:flex-end; margin-top:8px}
-    textarea{
-      flex:1; resize:none; height:56px; max-height:160px;
-      background:#0f1430; color:var(--ink);
-      border:1px solid var(--border); border-radius:12px; padding:12px;
-      outline:none;
+    h2{ font-size: 18px; margin: 4px 0 12px; letter-spacing:.2px }
+    label{ font-size: 14px; color: var(--muted); display:block; margin: 10px 0 6px }
+    input[type="text"], textarea{
+      width:100%; background:#0e1117; color:var(--ink);
+      border:1px solid #262b3a; border-radius:10px; padding:12px 12px; outline:none;
     }
+    textarea{ min-height: 110px; resize: vertical }
+    input[type="file"]{ color:var(--muted) }
+
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap }
     .btn{
-      height:44px; padding:0 16px; border-radius:12px; border:1px solid var(--border);
-      background:var(--brand); color:white; cursor:pointer; font-weight:600;
+      background:var(--acc); color:#061020; border:none; border-radius:10px; padding:10px 14px;
+      font-weight:600; cursor:pointer;
     }
-    .btn:disabled{opacity:.5; cursor:not-allowed}
-    .btn-ghost{background:transparent; color:#cfd6ff}
-    .toolbar{display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px}
-    input[type="file"]{display:inline-block}
-    label{user-select:none}
-    a{color:#a9b7ff}
+    .btn.secondary{ background:#1b2434; color:var(--ink); border:1px solid #2b3347 }
+    .btn.success{ background: var(--acc2); color:#041313 }
+    .btn.danger{ background: var(--danger); color:#2b0a0a }
+    .pill{ font-size:12px; padding:6px 8px; border-radius:36px; border:1px solid #2b3347; color:var(--muted) }
+
+    pre{
+      background:#0e1117; border:1px solid #262b3a; border-radius:10px; padding:12px; overflow:auto;
+      white-space:pre-wrap; word-wrap:break-word; max-height: 340px;
+    }
+    .muted{ color:var(--muted) }
+    .ok{ color: var(--acc2) }
+    .err{ color: var(--danger) }
+    .src{ font-size:12px; border:1px solid #2b3347; background:#0d121a; border-radius:8px; padding:8px; }
+
+    footer{ text-align:center; color:var(--muted); font-size:12px; padding:24px 0 60px }
+    a { color: var(--acc) }
+    .spacer{ height:8px }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="row">
-      <div class="logo"></div>
-      <div>
-        <h1>Pranay AI</h1>
-        <div class="muted">Study coach · RAG from your notes · Claude backend</div>
-      </div>
-      <div style="margin-left:auto" class="chip">API: <span id="health">checking…</span></div>
-    </div>
+  <header>
+    <h1>PranayAI</h1>
+    <p>Chat with your notes • Upload PDFs/TXT/MD • Ask with RAG</p>
+  </header>
 
-    <div class="card" id="card">
-      <div class="toolbar">
-        <div>
-          <label><input id="use_docs" type="checkbox" checked /> Use my docs</label>
-          <select id="mode">
-            <option value="default" selected>Default</option>
-            <option value="study">Study</option>
-            <option value="fitness">Fitness</option>
-            <option value="biz">Biz</option>
-            <option value="texting">Texting</option>
-          </select>
+  <main class="wrap">
+
+    <!-- Health / status -->
+    <section class="grid">
+      <div class="card span-12" id="statusCard">
+        <div class="row" style="justify-content:space-between; align-items:center">
+          <h2>Service status</h2>
+          <button class="btn secondary" id="btnHealth">Refresh</button>
         </div>
+        <div id="health" class="muted">Checking...</div>
       </div>
+    </section>
 
-      <div id="chat" aria-live="polite"></div>
+    <!-- Chat -->
+    <section class="grid">
+      <div class="card span-8">
+        <h2>Chat</h2>
+        <label for="msg">Message</label>
+        <textarea id="msg" placeholder="Ask me something (e.g., ‘summarize AP Biology Unit 3 using my notes’)"></textarea>
 
-      <div class="composer">
-        <textarea id="input" placeholder="Type a message… (try /study What is mitosis?)"></textarea>
-        <button id="send" class="btn">Send</button>
-      </div>
-
-      <div class="toolbar">
-        <div>
-          <input id="file" type="file" accept=".png,.jpg,.jpeg" />
-          <input id="alt" type="text" placeholder="Describe the image or ask a question" style="width:320px; background:#0f1430; border:1px solid var(--border); border-radius:10px; padding:8px; color:var(--ink)" />
-          <button id="sendImg" class="btn btn-ghost">Send image</button>
+        <div class="row" style="margin:10px 0 12px">
+          <label class="pill"><input type="checkbox" id="useRag" checked style="margin-right:6px">Use my uploaded data (RAG)</label>
+          <span class="pill">Top K: <input id="topk" type="text" value="6" style="width:42px; margin-left:6px; background:transparent; border:none; color:var(--ink)"></span>
+          <span class="pill">Max tokens: <input id="maxtok" type="text" value="800" style="width:56px; margin-left:6px; background:transparent; border:none; color:var(--ink)"></span>
+          <button class="btn" id="btnSend">Send</button>
         </div>
+
+        <div class="spacer"></div>
+        <div class="muted">Reply</div>
+        <pre id="reply">–</pre>
+
+        <div class="spacer"></div>
+        <div class="muted">Sources</div>
+        <div id="sources" class="src">–</div>
       </div>
-    </div>
-  </div>
+
+      <!-- Image chat -->
+      <div class="card span-4">
+        <h2>Chat with an Image</h2>
+        <label for="imgPrompt">Prompt</label>
+        <input id="imgPrompt" type="text" placeholder="e.g., Extract and answer from this photo" />
+
+        <label for="imgFile">Image (JPG/PNG)</label>
+        <input id="imgFile" type="file" accept="image/*" />
+
+        <div class="row" style="margin-top:10px">
+          <button class="btn" id="btnImg">Ask</button>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="muted">Image Reply</div>
+        <pre id="imgReply">–</pre>
+      </div>
+    </section>
+
+    <!-- Ingest -->
+    <section class="grid">
+      <div class="card span-12">
+        <h2>Upload PDFs / TXT / MD</h2>
+        <form id="ingestForm" class="row">
+          <input id="files" type="file" multiple accept=".pdf,.txt,.md" />
+          <button class="btn success" type="submit">Upload</button>
+          <button class="btn secondary" type="button" id="btnList">List Sources</button>
+          <button class="btn danger" type="button" id="btnClearOne">Delete One</button>
+        </form>
+
+        <div class="spacer"></div>
+        <div class="muted">Ingest status</div>
+        <pre id="ingestOut">–</pre>
+
+        <div class="spacer"></div>
+        <div class="muted">Current sources</div>
+        <pre id="listOut">–</pre>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>&copy; <script>document.write(new Date().getFullYear())</script> PranayAI</span>
+  </footer>
 
   <script>
-    // No overlays. Make everything focusable & clickable.
-    const chatEl   = document.getElementById('chat');
-    const inputEl  = document.getElementById('input');
-    const sendBtn  = document.getElementById('send');
-    const imgBtn   = document.getElementById('sendImg');
-    const fileEl   = document.getElementById('file');
-    const altEl    = document.getElementById('alt');
-    const useDocs  = document.getElementById('use_docs');
-    const modeSel  = document.getElementById('mode');
-    const healthEl = document.getElementById('health');
-
-    // Health check — same origin
-    fetch('/healthz').then(r => r.ok ? 'healthy' : 'unhealthy')
-      .then(t => { healthEl.textContent = t; })
-      .catch(() => { healthEl.textContent = 'unreachable'; });
-
-    function add(role, html){
-      const div = document.createElement('div');
-      div.className = 'msg ' + (role === 'you' ? 'you' : 'bot');
-      div.innerHTML = (role === 'you' ? '<span class="you">You:</span> ' : '<span class="bot">Pranay:</span> ') + html;
-      chatEl.appendChild(div);
-      chatEl.scrollTop = chatEl.scrollHeight;
+    // Helpers
+    function show(el, text, isError=false){
+      const node = (typeof el === 'string') ? document.getElementById(el) : el;
+      node.textContent = text;
+      node.classList.toggle('err', !!isError);
+      node.classList.toggle('ok', !isError);
     }
-    function addSources(list){
-      if(!list || !list.length) return;
-      const d = document.createElement('div');
-      d.className = 'sources';
-      d.textContent = 'Sources: ' + list.map(s => s.source).join(', ');
-      chatEl.appendChild(d);
-      chatEl.scrollTop = chatEl.scrollHeight;
+    async function getJSON(res){
+      const t = await res.text();
+      try { return { ok: res.ok, json: JSON.parse(t), raw: t } }
+      catch { return { ok: res.ok, json: null, raw: t } }
     }
-    async function askText(){
-      const msg = inputEl.value.trim();
-      if(!msg) return;
-      add('you', msg);
-      inputEl.value = '';
-      sendBtn.disabled = true;
+
+    // Health
+    async function refreshHealth(){
+      show('health', 'Checking…');
+      try{
+        const res = await fetch('/health');
+        const { ok, json, raw } = await getJSON(res);
+        if(!ok) return show('health', `Server error (${res.status}): ${raw}`, true);
+        const bits = [
+          json.ok ? 'OK' : 'NOT OK',
+          `Claude: ${json.anthropic_ready ? 'ready' : 'not ready'}`,
+          `Embeddings: ${json.openai_ready ? 'ready' : 'not ready'}`,
+          `Model: ${json.model || '-'}`,
+          `Embed: ${json.embed_model || '-'}`
+        ];
+        show('health', bits.join(' • '));
+      }catch(e){ show('health', 'Network error: '+e, true); }
+    }
+
+    // Chat
+    async function sendChat(){
+      const message = document.getElementById('msg').value.trim();
+      const useRag  = document.getElementById('useRag').checked;
+      const topK    = parseInt(document.getElementById('topk').value || '6', 10);
+      const maxTok  = parseInt(document.getElementById('maxtok').value || '800', 10);
+      if(!message){ return; }
+
+      show('reply', 'Thinking…'); show('sources','–');
       try{
         const res = await fetch('/chat', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({
-            message: msg,
-            use_docs: useDocs.checked,
-            mode: modeSel.value
-          })
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, use_rag: useRag, top_k: topK, max_tokens: maxTok })
         });
-        if(!res.ok){
-          const t = await res.text();
-          add('bot', '⚠️ Error: ' + t);
-        }else{
-          const data = await res.json();
-          add('bot', data.reply);
-          addSources(data.sources);
+        const { ok, json, raw } = await getJSON(res);
+        if(!ok || !json){
+          return show('reply', `Server error (${res.status}): ${raw}`, true);
         }
+        show('reply', json.reply || '(no text)');
+        const srcs = (json.sources && json.sources.length)
+          ? json.sources.map(s => JSON.stringify(s)).join('\n')
+          : '–';
+        show('sources', srcs, false);
       }catch(e){
-        add('bot', '⚠️ Network error: ' + e.message);
-      }finally{
-        sendBtn.disabled = false;
-        inputEl.focus();
-      }
-    }
-    async function sendImage(){
-      const f = fileEl.files && fileEl.files[0];
-      if(!f){ add('bot','Please choose an image first.'); return; }
-      const form = new FormData();
-      form.append('file', f);
-      form.append('alt', altEl.value || '');
-      form.append('use_docs', useDocs.checked ? '1' : '0');
-      form.append('mode', modeSel.value);
-      imgBtn.disabled = true;
-      add('you', '[Image uploaded: ' + f.name + '] ' + (altEl.value || ''));
-      try{
-        const res = await fetch('/vision', { method:'POST', body: form });
-        const txt = await res.text();
-        try{
-          const data = JSON.parse(txt);
-          add('bot', data.reply || '(no reply)');
-          addSources(data.sources || []);
-        }catch{
-          add('bot','⚠️ ' + txt);
-        }
-      }catch(e){
-        add('bot','⚠️ Network error: ' + e.message);
-      }finally{
-        imgBtn.disabled = false;
-        fileEl.value = ''; altEl.value = '';
+        show('reply', 'Network error: '+e, true);
       }
     }
 
-    // Wire up
-    sendBtn.addEventListener('click', askText);
-    imgBtn.addEventListener('click', sendImage);
-    inputEl.addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)) askText();
-    });
+    // Image Chat
+    async function sendImage(){
+      const prompt = document.getElementById('imgPrompt').value.trim() || 'Extract text and answer.';
+      const file = document.getElementById('imgFile').files[0];
+      if(!file){ return show('imgReply','Pick an image first.', true); }
+
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('prompt', prompt);
+
+      show('imgReply', 'Thinking…');
+      try{
+        const res = await fetch('/chat-image', { method: 'POST', body: fd });
+        const { ok, json, raw } = await getJSON(res);
+        if(!ok || !json){
+          return show('imgReply', `Server error (${res.status}): ${raw}`, true);
+        }
+        show('imgReply', json.reply || '(no text)');
+      }catch(e){
+        show('imgReply', 'Network error: '+e, true);
+      }
+    }
+
+    // Ingest
+    async function ingestFiles(e){
+      e.preventDefault();
+      const fInput = document.getElementById('files');
+      if(!fInput.files.length){ return; }
+
+      const fd = new FormData();
+      for(const f of fInput.files) fd.append('files', f);
+
+      show('ingestOut','Uploading…');
+      try{
+        const res = await fetch('/ingest', { method:'POST', body: fd });
+        const { ok, json, raw } = await getJSON(res);
+        if(!ok || !json) return show('ingestOut', `Server error (${res.status}): ${raw}`, true);
+        show('ingestOut', JSON.stringify(json, null, 2));
+      }catch(e){
+        show('ingestOut', 'Network error: '+e, true);
+      }
+    }
+
+    // List
+    async function listSources(){
+      show('listOut','Loading…');
+      try{
+        const res = await fetch('/list');
+        const { ok, json, raw } = await getJSON(res);
+        if(!ok || !json) return show('listOut', `Server error (${res.status}): ${raw}`, true);
+        show('listOut', JSON.stringify(json, null, 2));
+      }catch(e){
+        show('listOut', 'Network error: '+e, true);
+      }
+    }
+
+    // Delete one (by exact filename)
+    async function deleteOne(){
+      const name = prompt('Type the exact filename to delete (as shown in /list):');
+      if(!name) return;
+      try{
+        const url = `/delete?source=${encodeURIComponent(name)}`;
+        const res = await fetch(url, { method:'POST' });
+        const { ok, json, raw } = await getJSON(res);
+        if(!ok || !json) return alert(`Server error (${res.status}): ${raw}`);
+        alert(JSON.stringify(json, null, 2));
+      }catch(e){
+        alert('Network error: '+e);
+      }
+    }
+
+    // Wire up UI
+    document.getElementById('btnHealth').onclick = refreshHealth;
+    document.getElementById('btnSend').onclick = sendChat;
+    document.getElementById('btnImg').onclick = sendImage;
+    document.getElementById('ingestForm').onsubmit = ingestFiles;
+    document.getElementById('btnList').onclick = listSources;
+    document.getElementById('btnClearOne').onclick = deleteOne;
+
+    // Initial check
+    refreshHealth();
   </script>
 </body>
 </html>
