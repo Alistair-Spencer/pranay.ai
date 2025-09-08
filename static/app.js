@@ -1,236 +1,155 @@
-/* ---------- helpers ---------- */
-const $ = (sel) => document.querySelector(sel);
-const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-const toast = (msg, kind="ok") => {
-  const t = document.createElement('div');
-  t.className = `toast ${kind}`;
-  t.textContent = msg;
-  $("#toasts").appendChild(t);
-  setTimeout(()=> t.remove(), 4000);
-};
-const bytes = (n) => {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024**2) return `${(n/1024).toFixed(1)} KB`;
-  if (n < 1024**3) return `${(n/1024**2).toFixed(1)} MB`;
-  return `${(n/1024**3).toFixed(1)} GB`;
-};
-const setHealth = (txt, ok=true) => {
-  const el = $("#health");
-  el.textContent = txt;
-  el.style.background = ok ? "color-mix(in srgb, var(--brand) 20%, var(--surface))"
-                           : "color-mix(in srgb, var(--danger) 25%, var(--surface))";
-};
+const $ = (s)=>document.querySelector(s);
+const messagesEl = $('#messages');
+const input = $('#message');
+const sendBtn = $('#sendBtn');
+const chooseFileBtn = $('#chooseFile');
+const fileInput = $('#fileInput');
+const dropZone = $('#dropZone');
+const preview = $('#preview');
+const toast = $('#toast');
 
-/* ---------- theme toggle ---------- */
-(() => {
-  const btn = $("#themeToggle");
-  const key = "pranay_theme";
-  const apply = (m) => document.documentElement.dataset.theme = m;
-  const current = localStorage.getItem(key);
-  if (current) apply(current);
-  btn.addEventListener("click", () => {
-    const now = (document.documentElement.dataset.theme === "light") ? "dark" : "light";
-    apply(now);
-    localStorage.setItem(key, now);
-  });
-})();
+let sending = false;
+let queueImages = []; // {data, media_type, name}
 
-/* ---------- health check ---------- */
-async function checkHealth(){
-  try{
-    const t0 = performance.now();
-    const r = await fetch("/health");
-    const t1 = performance.now();
-    if (r.ok){
-      setHealth(`online • ${Math.max(1, Math.round(t1 - t0))}ms`, true);
-    } else {
-      setHealth("degraded", false);
-    }
-  } catch {
-    setHealth("offline", false);
-  }
+function toastMsg(t){
+  toast.textContent = t;
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'), 1400);
 }
-checkHealth();
-setInterval(checkHealth, 20000);
 
-/* ---------- ingest ---------- */
-let pendingFiles = [];
-
-function renderFileList(){
-  const box = $("#fileList");
-  if (!pendingFiles.length){ 
-    box.classList.add("empty");
-    box.textContent = "No files selected.";
-    $("#ingestBtn").disabled = true;
-    $("#clearBtn").disabled = true;
-    return;
+function addMsg(text, who='assistant'){
+  const div = document.createElement('div');
+  div.className = `msg ${who}`;
+  if (text === '__typing__'){
+    div.innerHTML = `<span class="typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>`;
+    div.dataset.typing = '1';
+  } else {
+    div.textContent = text;
   }
-  box.classList.remove("empty");
-  box.innerHTML = "";
-  pendingFiles.forEach((f, i) => {
-    const row = document.createElement("div");
-    row.className = "fileitem";
-    row.innerHTML = `
-      <div>📄</div>
-      <div class="name">${f.name}</div>
-      <div class="meta">${bytes(f.size)}</div>
-      <button class="ghost" data-i="${i}">✕</button>
-    `;
-    row.querySelector("button").onclick = (e)=>{
-      const idx = +e.currentTarget.dataset.i;
-      pendingFiles.splice(idx,1);
-      renderFileList();
+  messagesEl.appendChild(div);
+  div.scrollIntoView({behavior:'smooth', block:'end'});
+  return div;
+}
+
+function addImageStrip(files){
+  // render thumbnails under composer
+  files.forEach(f=>{
+    const wrap = document.createElement('div');
+    wrap.className = 'thumb';
+    const img = document.createElement('img');
+    img.src = `data:${f.media_type};base64,${f.data}`;
+    const x = document.createElement('button');
+    x.className = 'x';
+    x.textContent = '×';
+    x.onclick = ()=>{
+      preview.removeChild(wrap);
+      queueImages = queueImages.filter(q=>q !== f);
     };
-    box.appendChild(row);
+    wrap.appendChild(img); wrap.appendChild(x);
+    preview.appendChild(wrap);
   });
-  $("#ingestBtn").disabled = false;
-  $("#clearBtn").disabled = false;
 }
 
-function hookDropzone(){
-  const dz = $("#dropzone");
-  const input = $("#fileInput");
+function updateSend(){
+  sendBtn.disabled = sending || input.value.trim().length===0;
+}
 
-  const accept = (fs) => {
-    const ok = Array.from(fs).filter(f => /\.(pdf|txt|md)$/i.test(f.name));
-    const bad = Array.from(fs).filter(f => !/\.(pdf|txt|md)$/i.test(f.name));
-    if (bad.length) toast(`Ignored ${bad.length} unsupported file(s). Use PDF/TXT/MD.`, "err");
-    pendingFiles.push(...ok);
-    renderFileList();
-  };
-
-  dz.addEventListener("dragover", (e)=>{ e.preventDefault(); dz.style.borderColor = "var(--brand)" });
-  dz.addEventListener("dragleave", ()=> dz.style.borderColor = "var(--border)");
-  dz.addEventListener("drop", (e)=>{
-    e.preventDefault(); dz.style.borderColor = "var(--border)";
-    accept(e.dataTransfer.files);
+function handleFiles(fileList){
+  const readers = [];
+  [...fileList].forEach(file=>{
+    if (!file.type.startsWith('image/')) return;
+    const rd = new FileReader();
+    rd.onload = ()=>{
+      const base64 = rd.result.split(',')[1]; // after data:...;base64,
+      const obj = { data: base64, media_type: file.type || 'image/jpeg', name: file.name };
+      queueImages.push(obj);
+      addImageStrip([obj]);
+    };
+    rd.readAsDataURL(file);
+    readers.push(rd);
   });
-  dz.addEventListener("click", ()=> input.click());
-  input.addEventListener("change", ()=> accept(input.files));
-
-  $("#clearBtn").onclick = ()=>{ pendingFiles = []; renderFileList(); };
 }
-hookDropzone();
 
-async function ingest(){
-  if (!pendingFiles.length) return;
-  $("#ingestProgress").classList.remove("hidden");
-  $(".bar").style.width = "0%";
-  $("#ingestBtn").disabled = true;
-
-  // Build one multipart request as your API expects multiple "files"
-  const fd = new FormData();
-  pendingFiles.forEach(f => fd.append("files", f, f.name));
-
-  try{
-    const res = await new Promise((resolve, reject)=>{
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/ingest");
-      xhr.responseType = "text";
-      xhr.upload.onprogress = (e)=>{
-        if (e.lengthComputable){
-          const pct = Math.round(e.loaded / e.total * 100);
-          $(".bar").style.width = `${pct}%`;
-        }
-      };
-      xhr.onload = ()=> resolve({ ok: (xhr.status>=200 && xhr.status<300), status: xhr.status, text: xhr.responseText });
-      xhr.onerror = ()=> reject(new Error("Network error"));
-      xhr.send(fd);
-    });
-    if (res.ok){
-      toast("Ingestion complete");
-      $(".bar").style.width = "100%";
-      pendingFiles = [];
-      renderFileList();
-      await listDocs();
-    } else {
-      toast(`Ingest failed (${res.status})`, "err");
-    }
-  } catch(err){
-    toast(`Ingest error: ${err.message}`, "err");
-  } finally {
-    $("#ingestProgress").classList.add("hidden");
-    $("#ingestBtn").disabled = !pendingFiles.length;
-  }
-}
-$("#ingestBtn").onclick = ingest;
-
-/* ---------- list docs ---------- */
-async function listDocs(){
-  const box = $("#docs");
-  box.textContent = "Loading…";
-  try{
-    const r = await fetch("/list");
-    const txt = await r.text();
-    // Try to parse JSON; if not JSON, just show text.
-    let data = null;
-    try { data = JSON.parse(txt); } catch {}
-    box.innerHTML = "";
-    if (data && Array.isArray(data)){
-      if (!data.length){ box.classList.add("empty"); box.textContent = "No documents indexed yet."; return; }
-      data.forEach((name) => {
-        const row = document.createElement("div");
-        row.className = "doc";
-        row.innerHTML = `
-          <div class="name">📄 ${name}</div>
-          <div class="meta">indexed</div>
-        `;
-        box.appendChild(row);
-      });
-    } else {
-      // Fallback render
-      box.textContent = txt || "No documents indexed yet.";
-    }
-  } catch(e){
-    box.textContent = "Could not fetch documents.";
-    toast("Failed to fetch /list", "err");
-  }
-}
-$("#refreshList").onclick = listDocs;
-listDocs();
-
-/* ---------- chat ---------- */
-function pushMsg(role, text){
-  const row = document.createElement("div");
-  row.className = `msg ${role}`;
-  const avatar = document.createElement("div");
-  avatar.className = "avatar";
-  avatar.textContent = role === "user" ? "U" : "A";
-  const bubble = document.createElement("div");
-  bubble.className = "bubble";
-  bubble.textContent = text;
-  row.append(avatar, bubble);
-  $("#chatLog").appendChild(row);
-  $("#chatLog").scrollTop = $("#chatLog").scrollHeight;
-}
-async function send(){
-  const ta = $("#prompt");
-  const q = ta.value.trim();
-  if (!q) return;
-  ta.value = "";
-  pushMsg("user", q);
-  const placeholder = "Thinking…";
-  const id = Math.random().toString(36).slice(2);
-  pushMsg("bot", placeholder);
-  const botBubble = $$(".msg.bot .bubble").at(-1);
-
-  try{
-    const r = await fetch("/chat", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ question: q })
-    });
-    const text = await r.text();
-    botBubble.textContent = text;
-    if (!r.ok) toast(`/chat ${r.status}`, "err");
-  } catch (e){
-    botBubble.textContent = "Error contacting server.";
-    toast("Chat error: " + e.message, "err");
-  }
-}
-$("#sendBtn").onclick = send;
-$("#prompt").addEventListener("keydown", (e)=>{
-  if (e.key === "Enter" && !e.shiftKey){
-    e.preventDefault(); send();
-  }
+chooseFileBtn.addEventListener('click', ()=>fileInput.click());
+fileInput.addEventListener('change', e=>{
+  handleFiles(e.target.files);
+  fileInput.value = '';
 });
+
+;['dragenter','dragover'].forEach(evt=>{
+  dropZone.addEventListener(evt, e=>{
+    e.preventDefault(); e.stopPropagation();
+    dropZone.style.boxShadow = '0 0 0 2px rgba(111,243,214,.3)';
+  });
+});
+;['dragleave','drop'].forEach(evt=>{
+  dropZone.addEventListener(evt, e=>{
+    e.preventDefault(); e.stopPropagation();
+    dropZone.style.boxShadow = 'none';
+  });
+});
+dropZone.addEventListener('drop', (e)=>{
+  const files = e.dataTransfer.files;
+  handleFiles(files);
+});
+
+input.addEventListener('input', updateSend);
+input.addEventListener('keydown', (e)=>{
+  if ((e.ctrlKey||e.metaKey) && e.key==='Enter'){ e.preventDefault(); send(); }
+});
+sendBtn.addEventListener('click', send);
+
+async function send(){
+  if (sendBtn.disabled) return;
+  const text = input.value.trim();
+  input.value = ''; updateSend();
+
+  // Render user's message and any image previews inline in the chat
+  const userDiv = addMsg(text, 'user');
+  if (queueImages.length){
+    const strip = document.createElement('div');
+    strip.style.display='flex'; strip.style.gap='8px'; strip.style.marginTop='8px';
+    queueImages.forEach(q=>{
+      const t = document.createElement('div'); t.className='thumb';
+      const im = document.createElement('img'); im.src = `data:${q.media_type};base64,${q.data}`;
+      t.appendChild(im); strip.appendChild(t);
+    });
+    userDiv.appendChild(strip);
+  }
+
+  const typing = addMsg('__typing__', 'assistant');
+  sending = true; updateSend();
+
+  try{
+    const r = await fetch('/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message: text, images: queueImages, max_tokens: 800 })
+    });
+    const data = await r.json();
+    typing.remove();
+    if (data.reply){
+      addMsg(data.reply, 'assistant');
+    }else{
+      addMsg("Error: " + (data.error||'unknown'), 'assistant');
+    }
+  }catch(e){
+    typing.remove();
+    addMsg("Network error: " + e.message, 'assistant');
+  }finally{
+    sending = false; updateSend();
+    queueImages = []; preview.innerHTML = '';
+    input.focus();
+  }
+}
+
+(async function init(){
+  try{
+    const s = await (await fetch('/status')).json();
+    $('#service').textContent = s.ok ? `OK • Model: ${s.model}` : 'API key missing';
+    if(!s.ok) toastMsg('Add your Anthropic key to .env');
+  }catch{
+    $('#service').textContent = 'Status check failed';
+  }
+  updateSend();
+})();
