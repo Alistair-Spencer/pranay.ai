@@ -1,183 +1,154 @@
-# app.py  — full, drop-in version
+# api.py
 import os
-from typing import List, Optional, Dict, Any
+import io
+import base64
+from typing import Optional, List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from PIL import Image
+from anthropic import Anthropic
 from dotenv import load_dotenv
 
-# --- Load environment (.env on local; on Render use Env Vars) ---
+# --- Load environment variables locally (Render will inject env directly) ---
 load_dotenv()
 
-# ---------------- FastAPI app & CORS ----------------
-app = FastAPI(title="Pranay AI")
+# --- FastAPI app + CORS (allow all; tighten for production) ---
+app = FastAPI(title="Pernai API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # dev-friendly; lock down later if you want
+    allow_origins=["*"],  # set to your domain later (e.g., https://pernai.ai)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve your web UI (web/index.html) at /web
-# (If the folder doesn't exist on first run, this won't crash.)
-if os.path.isdir("web"):
-    app.mount("/web", StaticFiles(directory="web", html=True), name="web")
+# --- Anthropic client and model ---
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+if not ANTHROPIC_API_KEY:
+    # Don't crash; return clear error later if missing
+    pass
 
-# Root → redirect to UI
-@app.get("/")
-def _root():
-    if os.path.isdir("web"):
-        return RedirectResponse(url="/web/index.html")
-    return JSONResponse({"msg": "UI not found. Put your files in ./web/index.html"}, status_code=200)
+CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20240620")
+anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
-# Health check for Render/browsers
-@app.get("/healthz")
-def healthz():
-    return {"status": "ok"}
 
-# ---------------- System prompt & modes ----------------
-SYSTEM_PROMPT_PATH = os.path.join("system_prompts", "system_pranay.md")
-DEFAULT_SYSTEM = (
-    "You are Pranay AI. Be concise, helpful, and explain clearly. "
-    "When using context from the user's documents, cite the source in square brackets like [filename.pdf]."
-)
+# ----------------------------- Utilities ----------------------------- #
 
-def load_system_prompt() -> str:
-    try:
-        with open(SYSTEM_PROMPT_PATH, "r", encoding="utf-8") as f:
-            return f.read()
-    except Exception:
-        return DEFAULT_SYSTEM
+def _require_anthropic():
+    if anthropic_client is None:
+        return {
+            "error": "Anthropic SDK not available or API key missing. "
+                     "Set ANTHROPIC_API_KEY in your environment."
+        }
+    return None
 
-SYSTEM_PROMPT = load_system_prompt()
 
-MODES: Dict[str, str] = {
-    "default": "General helper.",
-    "study": "Mode: STUDY COACH — explain simply, quiz me, cite sources you used.",
-    "fitness": "Mode: FITNESS BUDDY — safe advice, form cues, progressive overload.",
-    "biz": "Mode: BUSINESS HELPER — pricing, scripts, short checklists.",
-    "texting": "Mode: SOCIAL COACH — respectful, confident, non-cringe.",
-}
+def _extract_text_blocks(msg) -> str:
+    """
+    Claude returns a list of content blocks. We concatenate any text blocks.
+    """
+    if not msg or not getattr(msg, "content", None):
+        return ""
+    parts = []
+    for block in msg.content:
+        # Text blocks have .type == "text" and .text attribute
+        txt = getattr(block, "text", "")
+        if isinstance(txt, str):
+            parts.append(txt)
+    return "".join(parts).strip()
 
-# ---------------- Optional Retriever (local embeddings) ----------------
-RetrieverT = None
-retriever = None
-try:
-    from retriever import Retriever as RetrieverT, DocChunk  # your local module
-except Exception:
-    DocChunk = None  # type: ignore
 
-if RetrieverT:
-    try:
-        retriever = RetrieverT(
-            persist_dir=os.getenv("CHROMA_DIR", "chroma_db"),
-            embeddings_backend=os.getenv("EMBEDDINGS", "local"),
-        )
-    except Exception:
-        retriever = None  # keep the app running even if DB missing
+def _image_to_base64_jpeg(data: bytes) -> tuple[str, str]:
+    """
+    Normalize uploads to a compressed JPEG to keep requests fast and within limits.
+    Returns (base64_str, media_type).
+    """
+    img = Image.open(io.BytesIO(data)).convert("RGB")
+    img.thumbnail((2000, 2000))  # keeps aspect ratio
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    return base64.b64encode(buf.getvalue()).decode("utf-8"), "image/jpeg"
 
-# ---------------- Anthropic (Claude) client ----------------
-ANTHROPIC_MODEL = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-latest")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")  # MUST be set in Render env
 
-anthropic_client = None
-anthropic_err: Optional[str] = None
-try:
-    from anthropic import Anthropic
-    if ANTHROPIC_API_KEY:
-        anthropic_client = Anthropic(api_key=ANTHROPIC_API_KEY)
-    else:
-        anthropic_err = (
-            "Missing ANTHROPIC_API_KEY. Set it in your environment variables."
-        )
-except Exception as e:
-    anthropic_err = f"Anthropic SDK not available: {e}"
+# ------------------------------- Models ------------------------------ #
 
-# ---------------- Request/Response models ----------------
 class ChatRequest(BaseModel):
     message: str
-    mode: Optional[str] = None
-    use_docs: bool = True
-    k: int = 5  # number of retrieved chunks
+    system: Optional[str] = None
+    max_tokens: int = 800
+    # If you later add retrieval, you can include top_k, filters, etc.
+
 
 class ChatResponse(BaseModel):
     reply: str
-    sources: List[Dict[str, Any]] = []
 
-# ---------------- Helper: build messages for Claude ----------------
-def build_context_chunks(chunks: List[DocChunk]) -> str:  # type: ignore
-    if not chunks:
-        return ""
-    joined = "\n\n".join([f"[{c.metadata.get('source','unknown')}] {c.text}" for c in chunks])
-    return f"Relevant context from the user's docs:\n{joined}\n\n"
 
-def system_for_mode(mode_key: str, chunks: List[DocChunk]) -> str:  # type: ignore
-    mode_text = MODES.get(mode_key, MODES["default"])
-    ctx = build_context_chunks(chunks)
-    return f"{SYSTEM_PROMPT}\n\n{mode_text}\n\n{ctx}If you use the context, cite the source in brackets."
+# ------------------------------- Routes ------------------------------ #
 
-# ---------------- Core chat endpoint ----------------
+@app.get("/health")
+def health():
+    ok = anthropic_client is not None
+    return {"ok": True, "anthropic_ready": ok, "model": CLAUDE_MODEL}
+
+
 @app.post("/chat", response_model=ChatResponse)
 def chat(req: ChatRequest):
-    # Quick guardrails: API ready?
-    if anthropic_err:
-        return JSONResponse({"detail": anthropic_err}, status_code=500)
-    if anthropic_client is None:
-        return JSONResponse({"detail": "Anthropic client not initialized."}, status_code=500)
+    """
+    Text-only chat endpoint. Frontend should POST JSON: { "message": "..." }
+    """
+    err = _require_anthropic()
+    if err:
+        return ChatResponse(reply=err["error"])
 
-    # Parse mode (explicit or slash-prefixed in message)
-    user_msg = req.message or ""
-    mode_key = (req.mode or "").lstrip("/").lower() if req.mode else ""
-    if not mode_key and user_msg.strip().startswith("/"):
-        # e.g., "/study What is mitosis?"
-        parts = user_msg.strip().split(" ", 1)
-        mode_key = parts[0].lstrip("/").lower()
-        user_msg = parts[1] if len(parts) > 1 else ""
+    # Build the messages for Claude
+    user_content = [{"type": "text", "text": req.message}]
+    system_prompt = req.system or "You are a helpful AI assistant. Be concise and accurate."
 
-    # Optional retrieval
-    chunks: List[DocChunk] = []  # type: ignore
-    if req.use_docs and retriever is not None:
-        try:
-            if retriever.is_ready():
-                chunks = retriever.search(user_msg, k=max(1, req.k))
-        except Exception:
-            chunks = []
+    msg = anthropic_client.messages.create(
+        model=CLAUDE_MODEL,
+        max_tokens=req.max_tokens,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_content}],
+    )
+    reply_text = _extract_text_blocks(msg) or "(no response)"
+    return ChatResponse(reply=reply_text)
 
-    # Compose Claude request
-    system_text = system_for_mode(mode_key or "default", chunks)
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": user_msg or " "},
-            ],
-        }
+
+@app.post("/chat-image", response_model=ChatResponse)
+async def chat_image(
+    file: UploadFile = File(...),
+    prompt: str = Form("Extract the text from this image and solve/answer any questions shown. Be concise."),
+    max_tokens: int = Form(1000)
+):
+    """
+    Image chat endpoint. Send multipart/form-data with:
+      - file: the image
+      - prompt (optional): extra instruction for the model
+      - max_tokens (optional)
+    """
+    err = _require_anthropic()
+    if err:
+        return ChatResponse(reply=err["error"])
+
+    raw = await file.read()
+    b64, media_type = _image_to_base64_jpeg(raw)
+
+    content = [
+        {"type": "text", "text": prompt},
+        {"type": "image",
+         "source": {
+             "type": "base64",
+             "media_type": media_type,
+             "data": b64,
+         }},
     ]
 
-    try:
-        resp = anthropic_client.messages.create(
-            model=ANTHROPIC_MODEL,
-            max_tokens=800,
-            temperature=0.4,
-            system=system_text,
-            messages=messages,
-        )
-        # Claude returns a content list; grab text parts
-        reply_text_parts = []
-        for block in resp.content:
-            if getattr(block, "type", None) == "text":
-                reply_text_parts.append(block.text)
-        reply_text = "\n".join(reply_text_parts).strip() or "(no response)"
-
-        sources = [
-            {"source": c.metadata.get("source", "unknown"), "score": c.metadata.get("score")}
-            for c in (chunks or [])
-        ]
-        return ChatResponse(reply=reply_text, sources=sources)
-
-    except Exception as e:
-        return JSONResponse({"detail": f"LLM error: {e}"}, status_code=500)
+    msg = anthropic_client.messages.create(
+        model=CLAUDE_MODEL,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": content}],
+    )
+    reply_text = _extract_text_blocks(msg) or "(no response)"
+    return ChatResponse(reply=reply_text)
