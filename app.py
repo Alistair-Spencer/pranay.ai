@@ -1,7 +1,8 @@
 # app.py
-import os, io, base64, re
-from typing import Optional, List, Tuple
-from fastapi import FastAPI, UploadFile, File, Form
+import os, io, base64, re, hashlib
+from typing import Optional, List, Tuple, Dict, Any
+
+from fastapi import FastAPI, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
@@ -17,7 +18,7 @@ from pypdf import PdfReader
 # ------------------ Env & App ------------------ #
 load_dotenv()
 ALLOWED = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",")]
-app = FastAPI(title="PranayAI", version="3.1.0")
+app = FastAPI(title="PranayAI", version="3.2.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED if ALLOWED != ["*"] else ["*"],
@@ -74,10 +75,21 @@ def read_pdf_bytes(data: bytes) -> str:
 
 def read_any_file(file: UploadFile) -> str:
     raw = file.file.read()
-    if file.filename.lower().endswith(".pdf"):
+    name = file.filename.lower()
+    if name.endswith(".pdf"):
         return read_pdf_bytes(raw)
-    else:
+    elif name.endswith(".txt") or name.endswith(".md"):
         return raw.decode("utf-8", errors="ignore")
+    else:
+        # Treat unknowns as text; change if you want to reject
+        return raw.decode("utf-8", errors="ignore")
+
+def stable_doc_id(filename: str) -> str:
+    """
+    Stable ID namespace per source file. Using lowercase filename hash is
+    simple and works well for dedupe across re-ingests.
+    """
+    return hashlib.md5(filename.strip().lower().encode("utf-8")).hexdigest()
 
 def embed_texts(chunks: List[str]) -> List[List[float]]:
     vecs = embedder.encode(chunks, convert_to_numpy=True)
@@ -104,12 +116,11 @@ class ChatResponse(BaseModel):
 
 # ------------------ Routes ------------------ #
 
-# ✅ Root route so homepage works
 @app.get("/")
 def root():
     return {
         "message": "Welcome to PranayAI 🚀",
-        "routes": ["/health", "/chat", "/chat-image", "/ingest"],
+        "routes": ["/health", "/chat", "/chat-image", "/ingest", "/list", "/delete"],
         "note": "This is the API backend. Use /chat or /chat-image for AI responses."
     }
 
@@ -150,7 +161,7 @@ async def chat_image(file: UploadFile = File(...), prompt: str = Form("Extract t
     b64, media_type = image_to_base64_jpeg(raw)
     content = [
         {"type":"text","text":prompt},
-        {"type":"image","source":{"type":"base64","media_type":media_type,"data":b64}}
+      {"type":"image","source":{"type":"base64","media_type":media_type,"data":b64}}
     ]
     msg = anthropic_client.messages.create(
         model=CLAUDE_MODEL, max_tokens=1000,
@@ -158,15 +169,71 @@ async def chat_image(file: UploadFile = File(...), prompt: str = Form("Extract t
     )
     return ChatResponse(reply=extract_text_blocks(msg))
 
+# ---------- Data management: ingest / list / delete ---------- #
+
 @app.post("/ingest")
 async def ingest(files: List[UploadFile] = File(...)):
-    added = []
+    """
+    Upload one or more files. Dedupe-by-filename:
+    - Before inserting, delete any existing chunks where {"source": filename}.
+    - Create stable chunk IDs based on filename-hash + chunk index.
+    """
+    report: List[Dict[str, Any]] = []
+
     for f in files:
+        filename = f.filename
+        # Delete any previous chunks for this source
+        try:
+            collection.delete(where={"source": filename})
+        except Exception:
+            # OK if nothing to delete
+            pass
+
+        # Read & chunk
         text = read_any_file(f)
         chunks = chunk_text(text)
+        if not chunks:
+            report.append({"file": filename, "chunks": 0, "status": "empty-or-unreadable"})
+            continue
+
+        # Embed & upsert with stable IDs
         vecs = embed_texts(chunks)
-        metas = [{"source": f.filename, "chunk": i} for i in range(len(chunks))]
-        ids = [f"{f.filename}-{i}" for i in range(len(chunks))]
+        doc_ns = stable_doc_id(filename)
+        ids = [f"{doc_ns}-{i}" for i in range(len(chunks))]
+        metas = [{"source": filename, "chunk": i} for i in range(len(chunks))]
+
         collection.add(ids=ids, documents=chunks, embeddings=vecs, metadatas=metas)
-        added.append({"file": f.filename, "chunks": len(chunks)})
-    return {"ingested": added}
+        report.append({"file": filename, "chunks": len(chunks), "status": "ingested"})
+
+    return {"ingested": report}
+
+@app.get("/list")
+def list_sources():
+    """
+    Return a compact list of sources (filenames) currently in the collection.
+    """
+    # Chroma doesn't expose a native "distinct" list; fetch a sample and group
+    results = collection.get(include=["metadatas"], limit=100000)
+    metas = results.get("metadatas") or []
+    sources = []
+    for m in metas:
+        if isinstance(m, dict):
+            src = m.get("source")
+        elif isinstance(m, list) and m and isinstance(m[0], dict):
+            src = m[0].get("source")
+        else:
+            src = None
+        if src and src not in sources:
+            sources.append(src)
+    return {"sources": sources, "count": len(sources)}
+
+@app.post("/delete")
+def delete_source(source: str = Query(..., description="Exact filename as shown in /list")):
+    """
+    Delete all chunks for a given source (filename).
+    """
+    try:
+        collection.delete(where={"source": source})
+        return {"deleted": source}
+    except Exception as e:
+        return {"deleted": False, "error": str(e)}
