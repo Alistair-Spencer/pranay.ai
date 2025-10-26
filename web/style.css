@@ -1,4 +1,4 @@
-/* FONT: Arimo, local */
+/* Font: Arimo from your upload */
 @font-face {
   font-family: 'PranayUI';
   src: url('/static/Arimo-Regular.ttf') format('truetype');
@@ -11,8 +11,6 @@
   font-weight: 500;
   font-style: normal;
 }
-
-/* ========= GLOBAL THEME ========= */
 
 * {
   box-sizing: border-box;
@@ -33,21 +31,22 @@
 :root {
   --bg-deep: #0f0f12;
   --bg-panel: #1c1c21;
-  --bg-panel-alt: #24242c;
   --border-color: #2f303a;
-  --border-color-soft: rgba(255,255,255,0.07);
   --text-primary: #ececf1;
   --text-dim: #a1a1aa;
   --accent-green: #10b981;
+
   --radius-md: 8px;
   --radius-lg: 10px;
   --radius-sm: 6px;
+
   --shadow-card: 0 20px 48px rgba(0,0,0,.8),
                  0 4px 16px rgba(0,0,0,.6);
   --shadow-floating: 0 24px 60px rgba(0,0,0,.9),
                      0 4px 20px rgba(0,0,0,.6);
-  --border-strong: 1px solid var(--border-color);
-  --border-soft: 1px solid rgba(255,255,255,0.06);
+
+  --border-strong: 1px solid rgba(255,255,255,0.12);
+  --border-soft:   1px solid rgba(255,255,255,0.07);
 }
 
 body {
@@ -58,7 +57,7 @@ body {
   display: flex;
 }
 
-/* App shell has the dynamic background */
+/* root shell that background swaps */
 .app-shell {
   display: flex;
   width: 100%;
@@ -70,7 +69,7 @@ body {
   position: relative;
 }
 
-/* =============== SIDEBAR =============== */
+/* SIDEBAR */
 
 .sidebar {
   width: 260px;
@@ -94,7 +93,7 @@ body {
 /* Brand header */
 .brand-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   background-color: rgba(36,36,44,0.6);
   border: var(--border-soft);
@@ -102,10 +101,9 @@ body {
   padding: 10px 12px;
   box-shadow: var(--shadow-card);
 }
-
 .brand-avatar {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--radius-md);
   background-color: #2a2b32;
   border: 1px solid #3a3b41;
@@ -113,14 +111,14 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  box-shadow: var(--shadow-card);
 }
-.brand-avatar img {
-  width: 100%;
-  height: 100%;
+.brand-logo-img {
+  width: 28px;
+  height: 28px;
   object-fit: contain;
-  background-color: transparent;
+  image-rendering: -webkit-optimize-contrast;
 }
-
 .brand-info {
   display: flex;
   flex-direction: column;
@@ -156,7 +154,7 @@ body {
   color: var(--text-dim);
 }
 
-/* New chat btn */
+/* New Chat button */
 .new-chat-btn {
   width: 100%;
   background-color: rgba(36,36,44,0.6);
@@ -230,7 +228,7 @@ body {
   box-shadow: inset 0 0 12px rgba(122,124,255,.3);
 }
 
-/* Bottom account area */
+/* Account / menu bottom */
 .sidebar-bottom {
   border-top: var(--border-strong);
   padding: 12px;
@@ -241,7 +239,6 @@ body {
   backdrop-filter: blur(16px);
   box-shadow: 0 -16px 32px rgba(0,0,0,.8);
 }
-
 .user-row {
   display: flex;
   align-items: flex-start;
@@ -305,6 +302,7 @@ body {
   font-weight: 600;
 }
 
+/* ⋯ trigger */
 .settings-trigger-btn {
   border: none;
   background: transparent;
@@ -359,8 +357,7 @@ body {
   color: #f87171;
 }
 
-/* =============== MAIN CHAT COLUMN =============== */
-
+/* CHAT COLUMN */
 .chat-area {
   flex: 1;
   position: relative;
@@ -372,7 +369,6 @@ body {
   box-shadow: inset 0 40px 100px rgba(0,0,0,.7);
 }
 
-/* Messages list */
 .chat-window {
   flex: 1;
   overflow-y: auto;
@@ -383,7 +379,7 @@ body {
   scroll-behavior: smooth;
 }
 
-/* message bubbles */
+/* message rows */
 .msg-row {
   display: flex;
   width: 100%;
@@ -424,14 +420,11 @@ body {
               0 24px 48px rgba(0,0,0,.9);
 }
 
-/* thinking row */
+/* typing indicator */
 .typing-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: var(--text-dim);
-  padding: 8px 24px 16px;
+  align-items: flex-start;
+  padding: 0 24px 16px;
   max-width: 800px;
 }
 .typing-bubble {
@@ -441,9 +434,9 @@ body {
   background-color: rgba(36,36,44,0.75);
   border: var(--border-soft);
   border-radius: var(--radius-md);
-  padding: 8px 10px;
+  padding: 10px 12px;
   box-shadow: var(--shadow-card);
-  gap: 4px;
+  gap: 6px;
 }
 .dot {
   width: 6px;
@@ -456,16 +449,12 @@ body {
 .dot:nth-child(3) { animation-delay: .3s; }
 
 @keyframes pulse {
-  0% { opacity: .2; }
-  50% { opacity: 1; }
-  100% { opacity: .2; }
-}
-.typing-label {
-  font-size: 13px;
-  color: var(--text-dim);
+  0%   { opacity: .2; transform: translateY(0px); }
+  50%  { opacity: 1;  transform: translateY(-2px); }
+  100% { opacity: .2; transform: translateY(0px); }
 }
 
-/* input bar */
+/* INPUT BAR */
 .input-bar {
   border-top: var(--border-strong);
   background-color: rgba(15,15,18,0.6);
@@ -489,9 +478,11 @@ body {
   position: relative;
   box-shadow: var(--shadow-card);
 }
+
 .input-left {
   position: relative;
 }
+
 .icon-btn {
   background-color: transparent;
   color: var(--text-primary);
@@ -514,11 +505,13 @@ body {
   font-weight: 500;
   line-height: 1;
 }
+
 .mic-btn .mic-icon {
   width: 18px;
   height: 18px;
   fill: var(--text-primary);
 }
+
 .send-btn {
   background-color: rgba(122,124,255,0.18);
   border: 1px solid rgba(122,124,255,.4);
@@ -544,6 +537,7 @@ body {
   height: 18px;
   fill: #fff;
 }
+
 .input-field {
   flex: 1;
   background-color: transparent;
@@ -554,7 +548,13 @@ body {
   line-height: 1.4;
 }
 
-/* plus dropdown */
+.input-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* + dropdown */
 .plus-menu {
   position: absolute;
   bottom: 44px;
@@ -591,7 +591,7 @@ body {
   line-height: 1.4;
 }
 
-/* MODAL */
+/* SHARED MODAL OVERLAY (settings/background/help) */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -671,7 +671,7 @@ body {
               0 4px 16px rgba(122,124,255,.4);
 }
 
-/* settings view */
+/* Settings view */
 .settings-row {
   display: flex;
   justify-content: space-between;
@@ -714,7 +714,7 @@ body {
   box-shadow: var(--shadow-card);
 }
 
-/* background view */
+/* Background view grid */
 .bg-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -793,7 +793,7 @@ body {
               0 24px 60px rgba(0,0,0,.9);
 }
 
-/* help view */
+/* Help view */
 .help-block {
   background-color: rgba(36,36,44,0.5);
   border: var(--border-soft);
@@ -825,7 +825,106 @@ body {
   line-height: 1.45;
 }
 
-/* RESPONSIVE */
+/* AUTH OVERLAY (full-screen signin) */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0,0,0,.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 3000;
+}
+.auth-card {
+  background-color: rgba(28,28,33,0.95);
+  backdrop-filter: blur(16px);
+  border: var(--border-soft);
+  border-radius: var(--radius-md);
+  width: 320px;
+  max-width: 90vw;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-floating);
+}
+.auth-card-top {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.auth-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+.auth-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+}
+.auth-close-btn:hover {
+  background-color: rgba(64,65,79,0.7);
+  color: var(--text-primary);
+}
+.auth-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+.auth-desc {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+.auth-google-btn {
+  border: var(--border-soft);
+  background-color: rgba(36,36,44,0.6);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.2;
+  padding: 8px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+  box-shadow: var(--shadow-card);
+}
+.auth-google-btn:hover {
+  background-color: rgba(64,65,79,0.7);
+}
+.auth-google-logo {
+  background-color: #fff;
+  color: #000;
+  border-radius: 3px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 3px;
+  font-weight: 600;
+}
+.auth-note {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+  background-color: rgba(36,36,44,0.5);
+  border: var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Responsive: hide sidebar on phone */
 @media (max-width: 700px) {
   .sidebar {
     display: none;
