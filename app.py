@@ -13,8 +13,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from openai import OpenAI
 
+# env
 load_dotenv()
-
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
 
@@ -22,7 +22,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = FastAPI(title="PranayAI")
 
-# Allow browser to call API (front-end is same origin, but keep this for safety)
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,10 +31,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# serve static assets (style.css, script.js, etc.)
+# serve static frontend files from ./web
 app.mount("/static", StaticFiles(directory="web"), name="static")
 
+# ---------- DEBUG ROUTE so we can confirm deploy ----------
+@app.get("/test-alive")
+async def test_alive():
+    # if you can hit /test-alive in browser, you're definitely running THIS code
+    return {"status": "running-new-code", "note": "if you see this, deploy is correct"}
 
+
+# ---------- FRONTEND ROUTE (home page) ----------
+@app.get("/")
+async def root_page():
+    # serve index.html from /web
+    return FileResponse("web/index.html")
+
+
+# ---------- MODELS / SCHEMAS ----------
 class ChatRequest(BaseModel):
     message: str
 
@@ -53,11 +67,12 @@ class HistoryPayload(BaseModel):
     conversations: List[Dict[str, Any]]
 
 
-# in-memory session + saved chats
+# ---------- MEMORY ----------
 sessions: Dict[str, str] = {}
 stored_conversations: Dict[str, Any] = {}
 
 
+# ---------- EASTER EGGS ----------
 def check_easter_eggs(user_text: str) -> Optional[str]:
     lowered = user_text.lower().strip()
 
@@ -154,15 +169,7 @@ def verify_google_id_token(id_token: str) -> str:
     return username
 
 
-# ---------- FRONTEND ROUTES ----------
-
-@app.get("/")
-async def root_page():
-    return FileResponse("web/index.html")
-
-
 # ---------- API ROUTES ----------
-
 @app.post("/chat", response_model=ChatResponse)
 async def chat(body: ChatRequest):
     user_msg = body.message
