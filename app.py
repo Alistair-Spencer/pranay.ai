@@ -7,8 +7,9 @@ import requests
 import jwt
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from openai import OpenAI
 
@@ -21,6 +22,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = FastAPI(title="PranayAI")
 
+# Allow browser to call API (front-end is same origin, but keep this for safety)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,6 +30,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# serve static assets (style.css, script.js, etc.)
+app.mount("/static", StaticFiles(directory="web"), name="static")
+
 
 class ChatRequest(BaseModel):
     message: str
@@ -46,8 +52,11 @@ class LoginResponse(BaseModel):
 class HistoryPayload(BaseModel):
     conversations: List[Dict[str, Any]]
 
+
+# in-memory session + saved chats
 sessions: Dict[str, str] = {}
 stored_conversations: Dict[str, Any] = {}
+
 
 def check_easter_eggs(user_text: str) -> Optional[str]:
     lowered = user_text.lower().strip()
@@ -64,6 +73,7 @@ def check_easter_eggs(user_text: str) -> Optional[str]:
         return "it's slim time"
 
     return None
+
 
 def normal_ai_response(user_text: str) -> str:
     completion = client.responses.create(
@@ -95,6 +105,7 @@ def normal_ai_response(user_text: str) -> str:
 
     return "Sorry, something went wrong generating a response."
 
+
 def get_username_from_auth(authorization_header: Optional[str]) -> str:
     if (
         authorization_header is None
@@ -107,6 +118,7 @@ def get_username_from_auth(authorization_header: Optional[str]) -> str:
         raise HTTPException(status_code=401, detail="invalid token")
 
     return sessions[token]
+
 
 def verify_google_id_token(id_token: str) -> str:
     jwks = requests.get("https://www.googleapis.com/oauth2/v3/certs").json()
@@ -141,6 +153,16 @@ def verify_google_id_token(id_token: str) -> str:
 
     return username
 
+
+# ---------- FRONTEND ROUTES ----------
+
+@app.get("/")
+async def root_page():
+    return FileResponse("web/index.html")
+
+
+# ---------- API ROUTES ----------
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(body: ChatRequest):
     user_msg = body.message
@@ -162,6 +184,7 @@ async def chat(body: ChatRequest):
         }
     )
 
+
 @app.post("/google-login", response_model=LoginResponse)
 async def google_login(body: GoogleLoginRequest):
     username = verify_google_id_token(body.id_token)
@@ -177,11 +200,13 @@ async def google_login(body: GoogleLoginRequest):
         "username": username,
     }
 
+
 @app.get("/history")
 async def get_history(authorization: str = Header(None)):
     username = get_username_from_auth(authorization)
     convo_list = stored_conversations.get(username, [])
     return {"conversations": convo_list}
+
 
 @app.post("/history")
 async def save_history(payload: HistoryPayload, authorization: str = Header(None)):
@@ -192,6 +217,7 @@ async def save_history(payload: HistoryPayload, authorization: str = Header(None
 
     stored_conversations[username] = payload.conversations
     return {"ok": True}
+
 
 @app.get("/health")
 async def health():

@@ -1,4 +1,5 @@
-const API_BASE = "http://localhost:8000";
+// API_BASE is blank because frontend and backend are same domain now
+const API_BASE = "";
 const CHAT_URL = `${API_BASE}/chat`;
 const GOOGLE_LOGIN_URL = `${API_BASE}/google-login`;
 const HISTORY_URL = `${API_BASE}/history`;
