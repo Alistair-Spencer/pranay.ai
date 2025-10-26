@@ -1,10 +1,9 @@
-// API base: same origin
+// API endpoints
 const API_BASE = "";
 const CHAT_URL = `${API_BASE}/chat`;
 const GOOGLE_LOGIN_URL = `${API_BASE}/google-login`;
 const HISTORY_URL = `${API_BASE}/history`;
 const UPLOAD_IMAGE_URL = `${API_BASE}/upload-image`;
-const UPLOAD_AUDIO_URL = `${API_BASE}/upload-audio`;
 
 // state
 let conversations = [];
@@ -15,35 +14,32 @@ let authUser  = localStorage.getItem("pranay_user") || null;
 
 let bgImageDataURL = localStorage.getItem("pranay_bg") || null;
 
-const chatWindow    = document.getElementById("chatWindow");
-const chatForm      = document.getElementById("chatForm");
-const userInput     = document.getElementById("userInput");
-const typingRow     = document.getElementById("typingRow");
-const historyList   = document.getElementById("history");
+// elements
+const chatWindow      = document.getElementById("chatWindow");
+const chatForm        = document.getElementById("chatForm");
+const userInput       = document.getElementById("userInput");
+const typingRow       = document.getElementById("typingRow");
+const historyList     = document.getElementById("history");
+const newChatBtn      = document.getElementById("newChatBtn");
 
-const newChatBtn    = document.getElementById("newChatBtn");
-
-const profileInitial = document.getElementById("profileInitial");
-const accountUserEl  = document.getElementById("accountUser");
-const signinBtn      = document.getElementById("signinBtn");
-const logoutBtn      = document.getElementById("logoutBtn");
+const profileInitial  = document.getElementById("profileInitial");
+const accountUserEl   = document.getElementById("accountUser");
+const signinBtn       = document.getElementById("signinBtn");
+const logoutBtn       = document.getElementById("logoutBtn");
 
 const settingsTrigger = document.getElementById("settingsTrigger");
 const settingsMenu    = document.getElementById("settingsMenu");
+const backgroundBtn   = document.getElementById("backgroundBtn");
+const bgFileInput     = document.getElementById("bgFileInput");
 
-const plusBtn      = document.getElementById("plusBtn");
-const plusMenu     = document.getElementById("plusMenu");
-const uploadImageBtn = document.getElementById("uploadImageBtn");
-const imageInput     = document.getElementById("imageInput");
-const uploadAudioBtn = document.getElementById("uploadAudioBtn");
-const audioInput     = document.getElementById("audioInput");
-const changeBgBtn    = document.getElementById("changeBgBtn");
-const bgFileInput    = document.getElementById("bgFileInput");
+const plusBtn         = document.getElementById("plusBtn");
+const plusMenu        = document.getElementById("plusMenu");
+const uploadImageBtn  = document.getElementById("uploadImageBtn");
+const imageInput      = document.getElementById("imageInput");
 
-const appShell = document.querySelector(".app-shell");
+const appShell        = document.querySelector(".app-shell");
 
-// ----- helpers -----
-
+// helpers
 function ensureConversationExists() {
   if (conversations.length === 0) {
     conversations.push({
@@ -121,9 +117,7 @@ async function saveHistoryToServer() {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${authToken}`
       },
-      body: JSON.stringify({
-        conversations
-      })
+      body: JSON.stringify({ conversations })
     });
   } catch (err) {
     console.warn("Failed to save history:", err);
@@ -151,8 +145,7 @@ async function loadHistoryFromServer() {
   }
 }
 
-// ----- UI actions -----
-
+// UI actions
 async function handleSubmit(e) {
   e.preventDefault();
   const text = userInput.value.trim();
@@ -211,7 +204,7 @@ function startNewChat() {
   userInput.focus();
 }
 
-// sign in via Google
+// account UI
 window.onGoogleSignIn = async function onGoogleSignIn(googleResponse) {
   try {
     const id_token = googleResponse.credential;
@@ -261,17 +254,26 @@ function updateAccountUI() {
   if (authUser) {
     profileInitial.textContent = authUser[0]?.toUpperCase() || "?";
     accountUserEl.textContent  = authUser;
-    signinBtn.style.display = "none";
-    logoutBtn.style.display = "block";
   } else {
     profileInitial.textContent = "?";
     accountUserEl.textContent  = "(not signed in)";
-    signinBtn.style.display = "inline-block";
-    logoutBtn.style.display = "block"; // we'll keep sign out visible so you can clear local
   }
 }
 
-// open/close settings menu
+// Google sign-in button explicit click
+signinBtn.addEventListener("click", () => {
+  // ask Google's script to show login
+  google.accounts.id.prompt();
+});
+
+// Sign out click in settings menu
+logoutBtn.addEventListener("click", () => {
+  doLogout();
+  renderSidebar();
+  renderChat();
+});
+
+// settings dropdown toggle
 settingsTrigger.addEventListener("click", () => {
   const isHidden = settingsMenu.hasAttribute("hidden");
   if (isHidden) {
@@ -281,22 +283,7 @@ settingsTrigger.addEventListener("click", () => {
   }
 });
 
-// clicking "Sign in with Google"
-signinBtn.addEventListener("click", () => {
-  // This triggers Google's one-tap UI flow if available,
-  // or you can manually render the Google button. For now we
-  // just let onGoogleSignIn handle callback from Google's script.
-  google.accounts.id.prompt(); // this is fine, Google's script is loaded in index.html
-});
-
-// manual logout
-logoutBtn.addEventListener("click", () => {
-  doLogout();
-  renderSidebar();
-  renderChat();
-});
-
-// plus menu open/close
+// plus menu toggle
 plusBtn.addEventListener("click", () => {
   const isHidden = plusMenu.hasAttribute("hidden");
   if (isHidden) {
@@ -306,15 +293,27 @@ plusBtn.addEventListener("click", () => {
   }
 });
 
-// choose image
+// click outside to close menus
+document.addEventListener("click", (e) => {
+  // close plus menu if click outside plusBtn/plusMenu
+  if (!plusBtn.contains(e.target) && !plusMenu.contains(e.target)) {
+    plusMenu.setAttribute("hidden", "true");
+  }
+  // close settings menu if click outside settingsTrigger/settingsMenu
+  if (!settingsTrigger.contains(e.target) && !settingsMenu.contains(e.target)) {
+    settingsMenu.setAttribute("hidden", "true");
+  }
+});
+
+// upload image from plus menu
 uploadImageBtn.addEventListener("click", () => {
   imageInput.click();
 });
 imageInput.addEventListener("change", async (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
+  plusMenu.setAttribute("hidden", "true");
 
-  // send to backend placeholder
   const formData = new FormData();
   formData.append("file", file);
 
@@ -323,45 +322,27 @@ imageInput.addEventListener("change", async (e) => {
       method: "POST",
       body: formData
     });
-    // OPTIONAL: Add a system message saying "Image received"
     addSystemMessage(`Image "${file.name}" uploaded (not analyzed yet).`);
   } catch (err) {
     addSystemMessage("Failed to upload image.");
   }
 });
 
-// choose audio
-uploadAudioBtn.addEventListener("click", () => {
-  audioInput.click();
-});
-audioInput.addEventListener("change", async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  const formData = new FormData();
-  formData.append("file", file);
-
-  try {
-    await fetch(UPLOAD_AUDIO_URL, {
-      method: "POST",
-      body: formData
-    });
-    addSystemMessage(`Audio "${file.name}" uploaded (not transcribed yet).`);
-  } catch (err) {
-    addSystemMessage("Failed to upload audio.");
+// Background / theme
+function applyBackground() {
+  if (bgImageDataURL) {
+    appShell.style.backgroundImage = `url(${bgImageDataURL})`;
+  } else {
+    appShell.style.backgroundImage = "none";
   }
-});
+}
 
-// change background (preset dark or clear custom)
-changeBgBtn.addEventListener("click", () => {
-  bgImageDataURL = null;
-  localStorage.removeItem("pranay_bg");
-  applyBackground();
-  plusMenu.setAttribute("hidden", "true");
+// "Custom background" in settings menu (backgroundBtn just opens file picker)
+backgroundBtn.addEventListener("click", () => {
+  // clicking opens file input so user can pick bg
+  bgFileInput.click();
 });
-
-// upload custom background image
-bgFileInput.addEventListener("change", async (e) => {
+bgFileInput.addEventListener("change", (e) => {
   const file = e.target.files?.[0];
   if (!file) return;
 
@@ -373,10 +354,10 @@ bgFileInput.addEventListener("change", async (e) => {
   };
   reader.readAsDataURL(file);
 
-  plusMenu.setAttribute("hidden", "true");
+  settingsMenu.setAttribute("hidden", "true");
 });
 
-// insert a system-style bubble in chat (for status updates)
+// system bubble helper
 function addSystemMessage(text) {
   ensureConversationExists();
   const conv = conversations[activeIndex];
@@ -389,23 +370,12 @@ function addSystemMessage(text) {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-// actually apply background to the app-shell
-function applyBackground() {
-  if (bgImageDataURL) {
-    appShell.style.backgroundImage = `url(${bgImageDataURL})`;
-  } else {
-    appShell.style.backgroundImage = "none";
-  }
-}
-
-// ----- wire up listeners -----
-
+// listeners
 chatForm.addEventListener("submit", handleSubmit);
 newChatBtn.addEventListener("click", startNewChat);
 
 // init
 (async function init() {
-  // load server history if logged in
   if (authToken) {
     await loadHistoryFromServer();
   }

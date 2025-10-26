@@ -11,68 +11,79 @@
 
     <!-- SIDEBAR -->
     <aside class="sidebar">
-
       <div class="sidebar-top">
 
-        <!-- Brand / status -->
+        <!-- Header / model block -->
         <div class="brand-row">
-          <div class="brand-icon" id="brandIcon">PA</div>
-          <div class="brand-block">
-            <div class="brand-name">PranayAI</div>
-            <div class="brand-status">
-              <span class="status-dot online"></span>
+          <div class="brand-avatar">
+            <div class="brand-avatar-initials">PA</div>
+          </div>
+          <div class="brand-info">
+            <div class="brand-name-row">
+              <span class="brand-name">PranayAI</span>
+            </div>
+            <div class="brand-status-row">
+              <span class="status-dot"></span>
               <span class="status-text">Online</span>
             </div>
           </div>
         </div>
 
-        <!-- New chat -->
+        <!-- New Chat -->
         <button id="newChatBtn" class="new-chat-btn">
-          <span class="plus-icon">+</span>
-          <span>New chat</span>
+          <span class="newchat-icon">✎</span>
+          <span class="newchat-text">New chat</span>
         </button>
 
-        <!-- Conversations list -->
+        <!-- Conversations -->
         <div class="section-label">Conversations</div>
         <ul id="history" class="history-list"></ul>
 
-        <!-- Library / etc. -->
-        <div class="section-label">Tools</div>
-        <ul class="tools-list">
-          <li class="tool-row">
-            <span class="tool-icon">📁</span>
-            <span class="tool-text">Library</span>
+        <!-- Items (Library / Deep Search / Agents) -->
+        <div class="section-label">Workspace</div>
+        <ul class="nav-list">
+          <li class="nav-row">
+            <span class="nav-icon">📂</span>
+            <span class="nav-text">Library</span>
           </li>
-          <li class="tool-row">
-            <span class="tool-icon">🔍</span>
-            <span class="tool-text">Deep Search</span>
+          <li class="nav-row">
+            <span class="nav-icon">🔎</span>
+            <span class="nav-text">Deep Search</span>
           </li>
-          <li class="tool-row">
-            <span class="tool-icon">🤖</span>
-            <span class="tool-text">Agents</span>
+          <li class="nav-row">
+            <span class="nav-icon">⚙</span>
+            <span class="nav-text">Agents</span>
           </li>
         </ul>
 
       </div>
 
-      <!-- bottom profile/settings area -->
+      <!-- bottom account/settings -->
       <div class="sidebar-bottom">
-        <div class="user-card" id="userCard">
+        <div class="user-row">
           <div class="user-avatar" id="profileInitial">?</div>
           <div class="user-meta">
             <div class="user-name" id="accountUser">(not signed in)</div>
-            <button class="signin-btn" id="signinBtn">Sign in with Google</button>
+            <button class="google-btn" id="signinBtn">
+              <span class="google-logo">G</span>
+              <span>Sign in with Google</span>
+            </button>
           </div>
-          <div class="user-menu-trigger" id="settingsTrigger">⋯</div>
+          <button class="settings-trigger-btn" id="settingsTrigger">⋯</button>
         </div>
 
         <div class="settings-menu" id="settingsMenu" hidden>
-          <div class="settings-item">Settings</div>
-          <div class="settings-item">Background</div>
-          <div class="settings-item">Help</div>
-          <div class="settings-item" id="logoutBtn" style="color:#f87171;">Sign out</div>
+          <div class="settings-item" id="settingsBtn">Settings</div>
+          <div class="settings-item" id="backgroundBtn">Custom background</div>
+          <label class="settings-item upload-bg-label">
+            Upload background image
+            <input type="file" id="bgFileInput" accept="image/*" hidden />
+          </label>
+          <div class="settings-item" id="helpBtn">Help</div>
+          <div class="settings-item signout-item" id="logoutBtn">Sign out</div>
         </div>
 
+        <!-- Google script hooks (hidden) -->
         <div id="g_id_onload"
           data-client_id="1041769547451-ri4n3pbe7f7sfr9stt1bu0j3vgtbufd9.apps.googleusercontent.com"
           data-context="signin"
@@ -89,14 +100,13 @@
           data-logo_alignment="left"
           style="display:none;">
         </div>
-
       </div>
     </aside>
 
     <!-- MAIN CHAT AREA -->
     <main class="chat-area">
 
-      <!-- message stream -->
+      <!-- message list -->
       <div id="chatWindow" class="chat-window"></div>
 
       <!-- typing indicator -->
@@ -111,39 +121,25 @@
       <form id="chatForm" class="input-bar">
         <div class="input-inner">
 
-          <!-- left: plus / attachment -->
+          <!-- left: plus -->
           <div class="input-left">
             <button
               class="icon-btn"
               id="plusBtn"
               type="button"
-              title="More">
+              title="Add">
               +
             </button>
 
             <div class="plus-menu" id="plusMenu" hidden>
               <label class="plus-item" id="uploadImageBtn">
-                🖼 Upload image
+                <span class="plus-label-text">Upload image</span>
                 <input type="file" id="imageInput" accept="image/*" hidden />
-              </label>
-
-              <label class="plus-item" id="uploadAudioBtn">
-                🎙 Upload audio
-                <input type="file" id="audioInput" accept="audio/*" hidden />
-              </label>
-
-              <button class="plus-item" id="changeBgBtn" type="button">
-                🖌 Change background
-              </button>
-
-              <label class="plus-item" id="bgUploadLabel">
-                📂 Custom background
-                <input type="file" id="bgFileInput" accept="image/*" hidden />
               </label>
             </div>
           </div>
 
-          <!-- middle: text field -->
+          <!-- text field -->
           <input
             id="userInput"
             class="input-field"
@@ -151,16 +147,8 @@
             autocomplete="off"
           />
 
-          <!-- right: mic + send -->
+          <!-- right: send arrow -->
           <div class="input-right">
-            <button
-              class="icon-btn"
-              id="micBtn"
-              type="button"
-              title="Record voice (coming soon)">
-              🎤
-            </button>
-
             <button
               class="send-btn"
               type="submit"

@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Optional
 import requests
 import jwt
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Header, HTTPException, UploadFile, File
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -22,7 +22,6 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = FastAPI(title="PranayAI")
 
-# allow browser
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # can tighten later
@@ -31,10 +30,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# serve static frontend (index.html / css / js)
 app.mount("/static", StaticFiles(directory="web"), name="static")
 
-# ---------- MODELS ----------
+
 class ChatRequest(BaseModel):
     message: str
 
@@ -52,26 +50,22 @@ class LoginResponse(BaseModel):
 class HistoryPayload(BaseModel):
     conversations: List[Dict[str, Any]]
 
-# in-memory session + saved chats
+
 sessions: Dict[str, str] = {}
 stored_conversations: Dict[str, Any] = {}
 
 
-# ---------- HELPERS ----------
 def check_easter_eggs(user_text: str) -> Optional[str]:
     lowered = user_text.lower().strip()
 
-    # JD easter egg
     jd_pattern = r"\b(hi|hey|hello|yo)\s+i[' ]?m\s+jd\b"
     if re.search(jd_pattern, lowered):
         return "hey jd I heard you’re trash at ap bio."
 
-    # pranay easter egg
     pranay_pattern = r"\b(my name is|i am|i'm|im|this is)\s+pranay\b"
     if re.search(pranay_pattern, lowered):
         return "I can't help you because you are too bad at Clash Royale."
 
-    # mason easter egg
     if "mason richards" in lowered:
         return "it's slim time"
 
@@ -79,18 +73,16 @@ def check_easter_eggs(user_text: str) -> Optional[str]:
 
 
 def normal_ai_response(user_text: str) -> str:
-    # call OpenAI with guard
     try:
-        completion = client.responses.create(
+        completion = client.chat.completions.create(
             model="gpt-4o-mini",
-            input=[
+            messages=[
                 {
                     "role": "system",
                     "content": (
-                        "You are PranayAI. Act like a clean, helpful AI assistant. "
-                        "Explain things clearly and directly to a smart friend. "
-                        "No cringe, no fake corporate vibe. "
-                        "If the user asks about policy or safety, follow OpenAI safety rules."
+                        "You are PranayAI. You answer like a calm, helpful assistant. "
+                        "Sound like you're explaining to a smart friend, not like a sales deck. "
+                        "Be direct, honest, and safe."
                     ),
                 },
                 {
@@ -100,17 +92,7 @@ def normal_ai_response(user_text: str) -> str:
             ],
         )
 
-        # extract assistant text
-        for item in completion.output:
-            if item.type == "message":
-                parts = []
-                for c in item.content:
-                    if getattr(c, "type", None) == "output_text":
-                        parts.append(c.text)
-                if parts:
-                    return "".join(parts)
-
-        return "I couldn't parse a response, but I'm alive."
+        return completion.choices[0].message.content.strip()
     except Exception as e:
         return f"There was an issue talking to the model ({e})."
 
@@ -130,7 +112,6 @@ def get_username_from_auth(authorization_header: Optional[str]) -> str:
 
 
 def verify_google_id_token(id_token: str) -> str:
-    # basic Google Sign-In verification
     jwks = requests.get("https://www.googleapis.com/oauth2/v3/certs").json()
     unverified_header = jwt.get_unverified_header(id_token)
     kid = unverified_header["kid"]
@@ -164,14 +145,11 @@ def verify_google_id_token(id_token: str) -> str:
     return username
 
 
-# ---------- FRONTEND ROUTES ----------
 @app.get("/")
 async def root_page():
-    # main app UI
     return FileResponse("web/index.html")
 
 
-# ---------- API ROUTES ----------
 @app.post("/chat", response_model=ChatResponse)
 async def chat(body: ChatRequest):
     user_msg = body.message
@@ -179,18 +157,12 @@ async def chat(body: ChatRequest):
     egg_reply = check_easter_eggs(user_msg)
     if egg_reply is not None:
         return JSONResponse(
-            content={
-                "response": egg_reply,
-                "easter_egg": True,
-            }
+            content={"response": egg_reply, "easter_egg": True}
         )
 
     ai_reply = normal_ai_response(user_msg)
     return JSONResponse(
-        content={
-            "response": ai_reply,
-            "easter_egg": False,
-        }
+        content={"response": ai_reply, "easter_egg": False}
     )
 
 
@@ -204,10 +176,7 @@ async def google_login(body: GoogleLoginRequest):
     if username not in stored_conversations:
         stored_conversations[username] = []
 
-    return {
-        "token": token,
-        "username": username,
-    }
+    return {"token": token, "username": username}
 
 
 @app.get("/history")
@@ -228,19 +197,12 @@ async def save_history(payload: HistoryPayload, authorization: str = Header(None
     return {"ok": True}
 
 
-# placeholder for image upload
 @app.post("/upload-image")
 async def upload_image(file: UploadFile = File(...)):
-    # TODO: later send this to vision model
+    # placeholder: we accept image but don't analyze yet
     return {"ok": True, "filename": file.filename}
 
-# placeholder for audio upload
-@app.post("/upload-audio")
-async def upload_audio(file: UploadFile = File(...)):
-    # TODO: later run Whisper transcription etc.
-    return {"ok": True, "filename": file.filename}
 
-# health
 @app.get("/health")
 async def health():
     return {
