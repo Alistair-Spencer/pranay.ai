@@ -1,75 +1,82 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // Grab elements
-  const signinBtn = document.getElementById("signin-btn");
-  const signinModal = document.getElementById("signin-modal");
-  const signinClose = document.getElementById("signin-close");
-  const googleLoginReal = document.getElementById("google-login-real");
+  // ===== query all elements we need =====
+  const signinBtn         = document.getElementById("signin-btn");
+  const signinModal       = document.getElementById("signin-modal");
+  const signinClose       = document.getElementById("signin-close");
+  const googleLoginReal   = document.getElementById("google-login-real");
 
-  const plusButton = document.getElementById("plus-button");
-  const uploadMenu = document.getElementById("upload-menu");
+  const plusButton        = document.getElementById("plus-button");
+  const uploadMenu        = document.getElementById("upload-menu");
 
-  const menuButton = document.getElementById("menu-button");
-  const settingsModal = document.getElementById("settings-modal");
+  const menuButton        = document.getElementById("menu-button");
+  const settingsModal     = document.getElementById("settings-modal");
 
-  const sendButton = document.getElementById("send-button");
-  const userInput = document.getElementById("user-input");
-  const chatBox = document.getElementById("chat-box");
-  const loadingDots = document.getElementById("loading-dots");
+  const sendButton        = document.getElementById("send-button");
+  const userInput         = document.getElementById("user-input");
+  const chatBox           = document.getElementById("chat-box");
+  const loadingDots       = document.getElementById("loading-dots");
 
-  // Safety check so we don't throw if any element is missing
-  function safeHide(el) {
-    if (el && !el.classList.contains("hidden")) {
+  // --- helper to show / hide ---
+  function show(el) {
+    if (!el) return;
+    el.classList.remove("hidden");
+  }
+  function hide(el) {
+    if (!el) return;
+    if (!el.classList.contains("hidden")) {
       el.classList.add("hidden");
     }
   }
-  function safeShowFlex(el) {
-    if (el && el.classList.contains("hidden")) {
-      el.classList.remove("hidden");
-    }
-  }
 
-  // Initial state: hide menus / modals / loading
-  safeHide(uploadMenu);
-  safeHide(settingsModal);
-  safeHide(signinModal);
-  safeHide(loadingDots);
+  // initial state
+  hide(uploadMenu);
+  hide(settingsModal);
+  hide(signinModal);
+  hide(loadingDots);
 
-  // ===== SIGN-IN FLOW =====
+  // ===== SIGN-IN MODAL BEHAVIOR =====
   if (signinBtn) {
-    signinBtn.addEventListener("click", () => {
-      // open modal
-      safeShowFlex(signinModal);
+    signinBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      show(signinModal);
     });
   }
 
   if (signinClose) {
-    signinClose.addEventListener("click", () => {
-      // close modal
-      safeHide(signinModal);
+    signinClose.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hide(signinModal);
     });
   }
 
   if (googleLoginReal) {
-    googleLoginReal.addEventListener("click", async () => {
-      // This is where you'd actually talk to /google-login
-      // We'll just close it for now
-      console.log("Google login clicked (placeholder)");
-      safeHide(signinModal);
+    googleLoginReal.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      console.log("TODO: implement /google-login real OAuth call");
+      hide(signinModal);
     });
   }
 
-  // ===== PLUS MENU (UPLOAD MENU) =====
+  // close sign-in if you click the dark background outside the card
+  if (signinModal) {
+    signinModal.addEventListener("click", (e) => {
+      const card = signinModal.querySelector(".overlay-card");
+      if (!card.contains(e.target)) {
+        hide(signinModal);
+      }
+    });
+  }
+
+  // ===== PLUS BUTTON (UPLOAD MENU) =====
   if (plusButton) {
     plusButton.addEventListener("click", (e) => {
       e.stopPropagation();
-      // toggle visibility
+      // toggle upload menu
       if (uploadMenu.classList.contains("hidden")) {
-        // open upload menu
-        safeHide(settingsModal); // close the other menu just in case
-        uploadMenu.classList.remove("hidden");
+        hide(settingsModal); // only one menu open at a time
+        show(uploadMenu);
       } else {
-        // close
-        uploadMenu.classList.add("hidden");
+        hide(uploadMenu);
       }
     });
   }
@@ -78,45 +85,29 @@ document.addEventListener("DOMContentLoaded", () => {
   if (menuButton) {
     menuButton.addEventListener("click", (e) => {
       e.stopPropagation();
+      // toggle settings menu
       if (settingsModal.classList.contains("hidden")) {
-        // open settings
-        safeHide(uploadMenu); // close other
-        settingsModal.classList.remove("hidden");
+        hide(uploadMenu);
+        show(settingsModal);
       } else {
-        // close
-        settingsModal.classList.add("hidden");
+        hide(settingsModal);
       }
     });
   }
 
-  // ===== CLOSE MENUS WHEN CLICKING OUTSIDE =====
+  // ===== GLOBAL CLICK TO CLOSE MENUS =====
   document.addEventListener("click", (e) => {
-    const clickedUploadMenu = uploadMenu.contains(e.target);
-    const clickedPlus = plusButton.contains(e.target);
+    // don't close if click is actually inside these popovers/buttons
+    const clickedUploadMenu   = uploadMenu && uploadMenu.contains(e.target);
+    const clickedPlusButton   = plusButton && plusButton.contains(e.target);
+    const clickedSettingsMenu = settingsModal && settingsModal.contains(e.target);
+    const clickedMenuButton   = menuButton && menuButton.contains(e.target);
 
-    const clickedSettingsMenu = settingsModal.contains(e.target);
-    const clickedMenuBtn = menuButton.contains(e.target);
-
-    // if click is outside upload menu and plus button, hide upload menu
-    if (!clickedUploadMenu && !clickedPlus) {
-      safeHide(uploadMenu);
+    if (!clickedUploadMenu && !clickedPlusButton) {
+      hide(uploadMenu);
     }
-
-    // if click is outside settings menu and menu button, hide settings menu
-    if (!clickedSettingsMenu && !clickedMenuBtn) {
-      safeHide(settingsModal);
-    }
-
-    // if click is on overlay background outside signin card, close signin
-    if (signinModal && !signinModal.classList.contains("hidden")) {
-      const card = signinModal.querySelector(".overlay-card");
-      if (card && !card.contains(e.target) && !signinBtn.contains(e.target)) {
-        // clicked the dark background -> close
-        if (!signinModal.contains(e.target)) return;
-        if (!card.contains(e.target)) {
-          // still allow click to "fall through"
-        }
-      }
+    if (!clickedSettingsMenu && !clickedMenuButton) {
+      hide(settingsModal);
     }
   });
 
@@ -125,17 +116,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const text = userInput.value.trim();
     if (!text) return;
 
-    // clear input for UX
+    // clear input box
     userInput.value = "";
 
-    // hide menus if open
-    safeHide(uploadMenu);
-    safeHide(settingsModal);
+    // hide menus just in case
+    hide(uploadMenu);
+    hide(settingsModal);
 
-    // show "thinking" dots
-    safeShowFlex(loadingDots);
+    // show typing dots
+    show(loadingDots);
 
-    // append user msg immediately
+    // append user bubble instantly
     appendMessage("You", text);
 
     try {
@@ -151,8 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const data = await resp.json();
 
-      // hide dots after response
-      safeHide(loadingDots);
+      hide(loadingDots);
 
       if (resp.ok) {
         appendMessage("PranayAI", data.response || "[no response]");
@@ -161,17 +151,20 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } catch (err) {
       console.error(err);
-      safeHide(loadingDots);
+      hide(loadingDots);
       appendMessage("PranayAI", "Network error.");
     }
   }
 
-  // click send
+  // clicking send
   if (sendButton) {
-    sendButton.addEventListener("click", sendMessage);
+    sendButton.addEventListener("click", (e) => {
+      e.preventDefault();
+      sendMessage();
+    });
   }
 
-  // enter key submit
+  // pressing Enter
   if (userInput) {
     userInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -181,14 +174,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ===== appendMessage helper =====
+  // helper to append chat bubbles
   function appendMessage(sender, text) {
     const bubble = document.createElement("div");
     bubble.className = sender === "You" ? "user-msg" : "bot-msg";
     bubble.textContent = text;
+
     chatBox.appendChild(bubble);
 
-    // auto-scroll to bottom
-    chatBox.parentElement.scrollTop = chatBox.parentElement.scrollHeight;
+    // auto-scroll chat pane to bottom
+    const scrollArea = document.getElementById("chat-scroll");
+    scrollArea.scrollTop = scrollArea.scrollHeight;
   }
 });

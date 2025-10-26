@@ -2,21 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <title>PranayAI</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="icon" type="image/png" href="logo.png" />
+
+  <!-- load CSS from /static -->
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" type="image/png" href="/static/logo.png" />
 </head>
 <body>
 
-  <!-- ===== APP WRAPPER ===== -->
   <div id="app-root">
-
-    <!-- ===== SIDEBAR ===== -->
+    <!-- ========== SIDEBAR ========== -->
     <aside id="sidebar">
       <div id="sidebar-header">
         <div id="brand-block">
-          <img id="brand-logo" src="logo.png" alt="PranayAI logo" />
+          <img id="brand-logo" src="/static/logo.png" alt="PranayAI logo" />
           <div class="brand-text">
             <div class="brand-name-row">
               <span class="brand-name">PranayAI</span>
@@ -33,31 +33,29 @@
       </div>
 
       <div id="sidebar-section-label">Chats</div>
+
       <div id="chat-list">
-        <!-- future: dynamic list of chats -->
+        <!-- we can inject actual chat names later -->
         <div class="chat-list-item active-chat">
           <span class="chat-list-title">New chat</span>
         </div>
       </div>
 
       <div id="sidebar-footer">
-        <!-- sign-in trigger: clicking opens modal -->
         <button id="signin-btn" class="signin-btn">
-          <img class="google-icon" src="google-icon.png" alt="G" />
+          <img class="google-icon" src="/static/google-icon.png" alt="G" />
           <span>Sign in with Google</span>
         </button>
       </div>
     </aside>
 
-    <!-- ===== MAIN AREA ===== -->
+    <!-- ========== MAIN AREA ========== -->
     <main id="main">
 
-      <!-- TOP RIGHT MENU BUTTON ("⋯") -->
-      <button id="menu-button" class="icon-btn" title="Menu">
-        ⋯
-      </button>
+      <!-- 3-dot menu button -->
+      <button id="menu-button" class="icon-btn" title="Menu">⋯</button>
 
-      <!-- SETTINGS MENU POPOVER -->
+      <!-- Popover for settings/help/sign out -->
       <div id="settings-modal" class="popover hidden">
         <div class="popover-item" data-action="open-settings">Settings</div>
         <div class="popover-item" data-action="open-background">Background</div>
@@ -66,13 +64,11 @@
         <div class="popover-item danger" data-action="sign-out">Sign out</div>
       </div>
 
-      <!-- CHAT SCROLL AREA -->
+      <!-- scrollable chat area -->
       <section id="chat-scroll">
-        <div id="chat-box">
-          <!-- messages will append here -->
-        </div>
+        <div id="chat-box"></div>
 
-        <!-- TYPING INDICATOR (starts hidden) -->
+        <!-- typing dots (hidden at start) -->
         <div id="loading-dots" class="hidden">
           <span class="dot"></span>
           <span class="dot"></span>
@@ -80,21 +76,19 @@
         </div>
       </section>
 
-      <!-- INPUT BAR -->
+      <!-- input bar at bottom -->
       <footer id="input-bar">
-        <!-- PLUS BUTTON -->
-        <button id="plus-button" class="icon-btn" title="More">
-          +
-        </button>
+        <!-- + button -->
+        <button id="plus-button" class="icon-btn" title="More">+</button>
 
-        <!-- UPLOAD MENU (appears above plus button when clicked) -->
+        <!-- plus button popover -->
         <div id="upload-menu" class="popover hidden">
           <div class="popover-item" id="upload-image-trigger">Upload image</div>
           <div class="popover-divider"></div>
           <div class="popover-item" id="custom-bg-trigger">Custom background</div>
         </div>
 
-        <!-- TEXT INPUT -->
+        <!-- message input -->
         <input
           id="user-input"
           type="text"
@@ -102,15 +96,13 @@
           autocomplete="off"
         />
 
-        <!-- SEND BUTTON -->
-        <button id="send-button" class="send-btn" title="Send">
-          ➤
-        </button>
+        <!-- send -->
+        <button id="send-button" class="send-btn" title="Send">➤</button>
       </footer>
     </main>
   </div>
 
-  <!-- ===== SIGN-IN MODAL (FULLSCREEN OVERLAY) ===== -->
+  <!-- sign-in modal overlay -->
   <div id="signin-modal" class="overlay hidden">
     <div class="overlay-card">
       <div class="overlay-card-header">
@@ -124,7 +116,7 @@
         </p>
 
         <button class="google-big-btn" id="google-login-real">
-          <img class="google-icon" src="google-icon.png" alt="Google"/>
+          <img class="google-icon" src="/static/google-icon.png" alt="Google"/>
           <span>Continue with Google</span>
         </button>
 
@@ -136,6 +128,7 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <!-- load JS from /static -->
+  <script src="/static/script.js"></script>
 </body>
 </html>

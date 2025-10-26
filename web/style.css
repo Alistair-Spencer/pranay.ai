@@ -1,7 +1,7 @@
-/* ========== BASE TYPOGRAPHY ========== */
+/* ------------ base font ------------ */
 @font-face {
   font-family: 'Arimo';
-  src: url('Arimo-Regular.ttf') format('truetype');
+  src: url('/static/Arimo-Regular.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
@@ -20,14 +20,18 @@ body {
   display: flex;
 }
 
-/* layout wrapper: sidebar + main */
+.hidden {
+  display: none !important;
+}
+
+/* ------------ layout ------------ */
 #app-root {
   display: flex;
   width: 100%;
   height: 100%;
 }
 
-/* ========== SIDEBAR ========== */
+/* ------------ sidebar ------------ */
 #sidebar {
   width: 260px;
   background-color: #1a1a1a;
@@ -92,7 +96,7 @@ body {
   font-weight: 500;
 }
 
-/* new chat pill */
+/* new chat pill button */
 .pill-btn {
   display: inline-flex;
   align-items: center;
@@ -108,12 +112,10 @@ body {
   cursor: pointer;
   width: fit-content;
 }
-
 .pill-btn:hover {
   background-color: #333;
   border-color: #4a4a4a;
 }
-
 .pill-icon {
   font-size: 14px;
   line-height: 1;
@@ -123,7 +125,6 @@ body {
   font-size: 13px;
 }
 
-/* label above chat list */
 #sidebar-section-label {
   color: #9b9b9b;
   font-size: 12px;
@@ -132,7 +133,6 @@ body {
   margin-bottom: 8px;
 }
 
-/* chat list container */
 #chat-list {
   flex: 1;
   overflow-y: auto;
@@ -148,18 +148,15 @@ body {
   border-radius: 6px;
   cursor: pointer;
 }
-
 .chat-list-item:hover {
   background-color: #2a2a2a;
 }
-
 .active-chat {
   background-color: #2a2a2a;
   border: 1px solid #3a3a3a;
   color: #fff;
 }
 
-/* sign-in button in sidebar footer */
 #sidebar-footer {
   margin-top: 16px;
   border-top: 1px solid #2a2a2a;
@@ -181,12 +178,10 @@ body {
   cursor: pointer;
   text-align: left;
 }
-
 .signin-btn:hover {
   background-color: #333;
   border-color: #4a4a4a;
 }
-
 .google-icon {
   width: 16px;
   height: 16px;
@@ -196,7 +191,7 @@ body {
   padding: 2px;
 }
 
-/* ========== MAIN PANE ========== */
+/* ------------ main pane ------------ */
 #main {
   flex: 1;
   background-color: #0f0f0f;
@@ -206,7 +201,7 @@ body {
   height: 100%;
 }
 
-/* menu button (⋯) top-right */
+/* 3-dot menu button top right  */
 #menu-button {
   position: absolute;
   top: 12px;
@@ -236,13 +231,11 @@ body {
   box-shadow: 0 20px 40px rgba(0,0,0,0.8);
   z-index: 300;
 }
-
 .popover {
   display: flex;
   flex-direction: column;
   padding: 6px 0;
 }
-
 .popover-item {
   color: #eaeaea;
   font-size: 14px;
@@ -261,22 +254,16 @@ body {
   margin: 6px 0;
 }
 
-/* hidden utility class so JS can toggle */
-.hidden {
-  display: none !important;
-}
-
-/* ========== CHAT SCROLL AREA ========== */
+/* chat scroll area */
 #chat-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 80px 24px 120px; /* leave space for input bar */
+  padding: 80px 24px 120px;
   display: flex;
   flex-direction: column;
   position: relative;
 }
-
 #chat-box {
   display: flex;
   flex-direction: column;
@@ -285,7 +272,6 @@ body {
   width: 100%;
   margin: 0 auto;
 }
-
 .user-msg,
 .bot-msg {
   max-width: 80%;
@@ -327,13 +313,12 @@ body {
 }
 .dot:nth-child(2) { animation-delay: .2s; }
 .dot:nth-child(3) { animation-delay: .4s; }
-
 @keyframes blink {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
 }
 
-/* ========== INPUT BAR ========== */
+/* input bar */
 #input-bar {
   position: absolute;
   left: 0;
@@ -348,6 +333,7 @@ body {
   gap: 10px;
 }
 
+/* plus button */
 .icon-btn {
   border: 1px solid #3a3a3a;
   background-color: #2a2a2a;
@@ -364,7 +350,7 @@ body {
   color: #fff;
 }
 
-/* upload menu anchored to plus */
+/* upload menu (anchored to +) */
 #upload-menu {
   position: absolute;
   bottom: 58px;
@@ -377,6 +363,7 @@ body {
   z-index: 400;
 }
 
+/* text field */
 #user-input {
   flex: 1;
   background-color: #2a2a2a;
@@ -393,6 +380,7 @@ body {
   background-color: #2f2f2f;
 }
 
+/* send button */
 .send-btn {
   border: 1px solid #3a3a3a;
   background-color: #3a3a3a;
@@ -408,8 +396,8 @@ body {
   border-color: #5a5a5a;
 }
 
-/* ========== SIGN-IN OVERLAY ========== */
-#signin-modal {
+/* sign-in modal overlay */
+.overlay {
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.6);
@@ -417,9 +405,6 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-.overlay {
-  /* this class gets toggled, but CSS above is explicit anyway */
 }
 
 .overlay-card {
@@ -441,7 +426,6 @@ body {
   justify-content: space-between;
   align-items: flex-start;
 }
-
 .overlay-title {
   font-size: 16px;
   font-weight: 600;
@@ -468,7 +452,6 @@ body {
   line-height: 1.4;
   margin: 0;
 }
-
 .overlay-body-foot {
   font-size: 12px;
   color: #888;
@@ -495,12 +478,7 @@ body {
   background-color: #e9e9e9;
 }
 
-/* hide utility class */
-.hidden {
-  display: none !important;
-}
-
-/* scrollbars */
+/* scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
 }
