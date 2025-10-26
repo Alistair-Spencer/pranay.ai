@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1.0,user-scalable=no"
+  />
   <title>PranayAI</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+
+  <!-- Styles -->
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
@@ -13,10 +21,10 @@
     <aside class="sidebar">
       <div class="sidebar-top">
 
-        <!-- Header / model block -->
+        <!-- Brand header -->
         <div class="brand-row">
           <div class="brand-avatar">
-            <div class="brand-avatar-initials">PA</div>
+            <img src="/static/logo.png" alt="PranayAI logo" class="brand-logo-img" />
           </div>
           <div class="brand-info">
             <div class="brand-name-row">
@@ -29,69 +37,59 @@
           </div>
         </div>
 
-        <!-- New Chat -->
+        <!-- New chat -->
         <button id="newChatBtn" class="new-chat-btn">
           <span class="newchat-icon">✎</span>
           <span class="newchat-text">New chat</span>
         </button>
 
-        <!-- Conversations -->
-        <div class="section-label">Conversations</div>
+        <!-- Chats -->
+        <div class="section-label">Chats</div>
         <ul id="history" class="history-list"></ul>
-
-        <!-- Items (Library / Deep Search / Agents) -->
-        <div class="section-label">Workspace</div>
-        <ul class="nav-list">
-          <li class="nav-row">
-            <span class="nav-icon">📂</span>
-            <span class="nav-text">Library</span>
-          </li>
-          <li class="nav-row">
-            <span class="nav-icon">🔎</span>
-            <span class="nav-text">Deep Search</span>
-          </li>
-          <li class="nav-row">
-            <span class="nav-icon">⚙</span>
-            <span class="nav-text">Agents</span>
-          </li>
-        </ul>
-
       </div>
 
-      <!-- bottom account/settings -->
+      <!-- Bottom section (account + menu) -->
       <div class="sidebar-bottom">
         <div class="user-row">
           <div class="user-avatar" id="profileInitial">?</div>
+
           <div class="user-meta">
-            <div class="user-name" id="accountUser">(not signed in)</div>
+            <div class="user-name" id="accountUser"></div>
+
             <button class="google-btn" id="signinBtn">
               <span class="google-logo">G</span>
               <span>Sign in with Google</span>
             </button>
           </div>
-          <button class="settings-trigger-btn" id="settingsTrigger">⋯</button>
+
+          <button
+            class="settings-trigger-btn"
+            id="settingsTrigger"
+            aria-label="Menu"
+          >
+            ⋯
+          </button>
         </div>
 
+        <!-- Dropdown from ⋯ -->
         <div class="settings-menu" id="settingsMenu" hidden>
-          <div class="settings-item" id="settingsBtn">Settings</div>
-          <div class="settings-item" id="backgroundBtn">Custom background</div>
-          <label class="settings-item upload-bg-label">
-            Upload background image
-            <input type="file" id="bgFileInput" accept="image/*" hidden />
-          </label>
-          <div class="settings-item" id="helpBtn">Help</div>
+          <div class="settings-item" id="openSettingsPanel">Settings</div>
+          <div class="settings-item" id="openBackgroundPanel">Background</div>
+          <div class="settings-item" id="openHelpPanel">Help</div>
           <div class="settings-item signout-item" id="logoutBtn">Sign out</div>
         </div>
 
-        <!-- Google script hooks (hidden) -->
-        <div id="g_id_onload"
+        <!-- Google Sign-In bootstrap (hidden) -->
+        <div
+          id="g_id_onload"
           data-client_id="1041769547451-ri4n3pbe7f7sfr9stt1bu0j3vgtbufd9.apps.googleusercontent.com"
           data-context="signin"
           data-callback="onGoogleSignIn"
           data-auto_prompt="false"
           style="display:none;">
         </div>
-        <div class="g_id_signin"
+        <div
+          class="g_id_signin"
           data-type="standard"
           data-size="medium"
           data-theme="filled_blue"
@@ -103,32 +101,35 @@
       </div>
     </aside>
 
-    <!-- MAIN CHAT AREA -->
+    <!-- MAIN CHAT COLUMN -->
     <main class="chat-area">
 
-      <!-- message list -->
+      <!-- Messages -->
       <div id="chatWindow" class="chat-window"></div>
 
-      <!-- typing indicator -->
+      <!-- Thinking row -->
       <div class="typing-row" id="typingRow" hidden>
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
+        <div class="typing-bubble">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+        </div>
         <span class="typing-label">PranayAI is thinking…</span>
       </div>
 
-      <!-- input bar -->
+      <!-- Input bar -->
       <form id="chatForm" class="input-bar">
         <div class="input-inner">
 
-          <!-- left: plus -->
+          <!-- + menu -->
           <div class="input-left">
             <button
               class="icon-btn"
               id="plusBtn"
               type="button"
-              title="Add">
-              +
+              aria-label="More"
+            >
+              <span class="icon-plus">+</span>
             </button>
 
             <div class="plus-menu" id="plusMenu" hidden>
@@ -147,23 +148,237 @@
             autocomplete="off"
           />
 
-          <!-- right: send arrow -->
+          <!-- mic + send -->
           <div class="input-right">
+            <button
+              class="icon-btn mic-btn"
+              id="micBtn"
+              type="button"
+              aria-label="Dictate"
+            >
+              <svg class="mic-icon" viewBox="0 0 24 24">
+                <path d="M12 15c1.66 0 3-1.31 3-2.92V6.92C15 5.31 13.66 4 12 4s-3 1.31-3 2.92v5.16C9 13.69 10.34 15 12 15zM7 11v1c0 2.42 1.72 4.44 4 4.9V20H9v2h6v-2h-2v-3.1c2.28-.46 4-2.48 4-4.9v-1h-2v1c0 1.62-1.34 2.92-3 2.92S9 13.62 9 12v-1H7z"/>
+              </svg>
+            </button>
+
             <button
               class="send-btn"
               type="submit"
               id="sendBtn"
-              title="Send">
-              ➤
+              aria-label="Send message"
+            >
+              <svg class="send-icon" viewBox="0 0 24 24">
+                <path d="M3.4 20.4l17.3-8.2c.9-.4.9-1.6 0-2L3.4 2c-.7-.3-1.5.4-1.3 1.2l2.2 7c.1.4.5.7.9.7h6.3c.2 0 .4.2.4.4 0 .2-.2.4-.4.4H5.2c-.4 0-.8.3-.9.7L2.1 19.2c-.2.8.6 1.5 1.3 1.2z"/>
+              </svg>
             </button>
           </div>
-
         </div>
       </form>
     </main>
   </div>
 
+  <!-- MODAL OVERLAY (used for Settings / Background / Help) -->
+  <div class="modal-overlay" id="settingsModal" hidden>
+    <div class="modal-panel">
+      <div class="modal-header">
+        <div class="modal-title" id="modalTitle">Settings</div>
+        <button class="modal-close-btn" id="modalCloseBtn">✕</button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- SETTINGS VIEW -->
+        <div class="settings-view" id="settingsView">
+          <div class="settings-row">
+            <div class="settings-label">Account</div>
+            <div class="settings-value" id="settingsAccountName">(not signed in)</div>
+          </div>
+
+          <div class="settings-row">
+            <div class="settings-label">Status</div>
+            <div class="settings-value">Online</div>
+          </div>
+
+          <div class="settings-row pledge-row">
+            <div class="settings-label">Responsible use</div>
+            <div class="settings-value">
+              <label class="pledge-label">
+                <input type="checkbox" id="pledgeCheckbox" />
+                <span>I agree: I won’t use this to cheat or share private info.</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-hint">
+            By continuing, you agree to use PranayAI for learning, not for
+            submitting unapproved work. You’re responsible for what you send.
+          </div>
+        </div>
+
+        <!-- BACKGROUND VIEW -->
+        <div class="background-view" id="backgroundView" hidden>
+          <div class="bg-grid">
+
+            <!-- default -->
+            <label class="bg-tile">
+              <input
+                type="radio"
+                class="bg-radio"
+                name="bgstyle"
+                value="default"
+              />
+              <div class="bg-thumb bg-thumb-default">
+                <span class="bg-thumb-label">Default</span>
+              </div>
+            </label>
+
+            <!-- preset1 -->
+            <label class="bg-tile">
+              <input
+                type="radio"
+                class="bg-radio"
+                name="bgstyle"
+                value="preset1"
+              />
+              <div
+                class="bg-thumb"
+                style="background-image:url('/static/bg1.jpg');"
+              >
+                <span class="bg-thumb-label">Purple glow</span>
+              </div>
+            </label>
+
+            <!-- preset2 -->
+            <label class="bg-tile">
+              <input
+                type="radio"
+                class="bg-radio"
+                name="bgstyle"
+                value="preset2"
+              />
+              <div
+                class="bg-thumb"
+                style="background-image:url('/static/bg2.jpg');"
+              >
+                <span class="bg-thumb-label">Blue grid</span>
+              </div>
+            </label>
+
+            <!-- preset3 -->
+            <label class="bg-tile">
+              <input
+                type="radio"
+                class="bg-radio"
+                name="bgstyle"
+                value="preset3"
+              />
+              <div
+                class="bg-thumb"
+                style="background-image:url('/static/bg3.jpg');"
+              >
+                <span class="bg-thumb-label">Gradient blobs</span>
+              </div>
+            </label>
+
+            <!-- custom -->
+            <label class="bg-tile">
+              <input
+                type="radio"
+                class="bg-radio"
+                name="bgstyle"
+                value="custom"
+              />
+              <div class="bg-thumb bg-thumb-upload">
+                <span class="bg-thumb-label">Upload your own</span>
+              </div>
+              <input type="file" id="bgFileInput" accept="image/*" />
+            </label>
+          </div>
+
+          <div class="settings-hint">
+            Your background is only stored in this browser.
+          </div>
+        </div>
+
+        <!-- HELP VIEW -->
+        <div class="help-view" id="helpView" hidden>
+          <div class="help-block">
+            <div class="help-title">Help & Policies</div>
+
+            <div class="help-section">
+              <div class="help-heading">What PranayAI is</div>
+              <div class="help-text">
+                PranayAI is a student-built AI assistant to help you learn,
+                study, and brainstorm. It's here to explain things, outline
+                ideas, and help you understand school work — not do graded work
+                for you.
+              </div>
+            </div>
+
+            <div class="help-section">
+              <div class="help-heading">Using this at Poway Unified School District</div>
+              <div class="help-text">
+                • Do not use AI to finish tests, quizzes, or assignments unless
+                your teacher says it's allowed.<br/>
+                • Do use it to learn: ask for explanations, practice questions,
+                or feedback on drafts you will rewrite yourself.<br/>
+                • Do not paste private info (passwords, grades, other students'
+                info).<br/>
+                • Do not use this to harass or target anyone at school.
+              </div>
+            </div>
+
+            <div class="help-section">
+              <div class="help-heading">Privacy</div>
+              <div class="help-text">
+                If you sign in with Google, your chats can be saved to your
+                account so you can access them later. Unsaved chats and your
+                background choice are stored locally in this browser. Content
+                you enter is sent to an AI model to generate a response. Don't
+                share anything you wouldn't want shared digitally.
+              </div>
+            </div>
+
+            <div class="help-section">
+              <div class="help-heading">Accuracy & safety</div>
+              <div class="help-text">
+                AI can be wrong. Always double-check before using an answer in
+                school work. If you ask for something unsafe or harmful, the AI
+                will refuse. This is not an emergency service.
+              </div>
+            </div>
+
+            <div class="help-section">
+              <div class="help-heading">If a teacher asks</div>
+              <div class="help-text">
+                You can say: “I used PranayAI to study and understand the
+                topic. I didn’t submit its output as my graded work. I can show
+                you my prompts and what I changed.”
+              </div>
+            </div>
+
+            <div class="help-section">
+              <div class="help-heading">Report problems</div>
+              <div class="help-text">
+                If the AI gives inappropriate or unsafe content, screenshot it
+                and tell your teacher or IT so it can be reviewed.
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- modal-body -->
+
+      <div class="modal-footer">
+        <button class="modal-save-btn" id="modalSaveBtn">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Google Sign-In SDK -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Script -->
   <script src="/static/script.js"></script>
 </body>
 </html>
