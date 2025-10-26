@@ -1,33 +1,48 @@
-// API_BASE is blank because frontend and backend are same domain now
+// API base: same origin
 const API_BASE = "";
 const CHAT_URL = `${API_BASE}/chat`;
 const GOOGLE_LOGIN_URL = `${API_BASE}/google-login`;
 const HISTORY_URL = `${API_BASE}/history`;
+const UPLOAD_IMAGE_URL = `${API_BASE}/upload-image`;
+const UPLOAD_AUDIO_URL = `${API_BASE}/upload-audio`;
 
+// state
 let conversations = [];
 let activeIndex = 0;
 
 let authToken = localStorage.getItem("pranay_token") || null;
 let authUser  = localStorage.getItem("pranay_user") || null;
 
-let autosave = localStorage.getItem("pranay_autosave") === "true";
+let bgImageDataURL = localStorage.getItem("pranay_bg") || null;
 
-const historyList = document.getElementById("history");
-const chatWindow = document.getElementById("chatWindow");
-const chatForm = document.getElementById("chatForm");
-const userInput = document.getElementById("userInput");
-const typingRow = document.getElementById("typingRow");
-const newChatBtn = document.getElementById("newChatBtn");
+const chatWindow    = document.getElementById("chatWindow");
+const chatForm      = document.getElementById("chatForm");
+const userInput     = document.getElementById("userInput");
+const typingRow     = document.getElementById("typingRow");
+const historyList   = document.getElementById("history");
 
-const profileBtn = document.getElementById("profileBtn");
-const accountCard = document.getElementById("accountCard");
+const newChatBtn    = document.getElementById("newChatBtn");
+
 const profileInitial = document.getElementById("profileInitial");
-const accountUserEl = document.getElementById("accountUser");
-const autosaveToggle = document.getElementById("autosaveToggle");
+const accountUserEl  = document.getElementById("accountUser");
+const signinBtn      = document.getElementById("signinBtn");
+const logoutBtn      = document.getElementById("logoutBtn");
 
-const authAreaSignedOut = document.getElementById("authAreaSignedOut");
-const authAreaSignedIn  = document.getElementById("authAreaSignedIn");
-const logoutBtn         = document.getElementById("logoutBtn");
+const settingsTrigger = document.getElementById("settingsTrigger");
+const settingsMenu    = document.getElementById("settingsMenu");
+
+const plusBtn      = document.getElementById("plusBtn");
+const plusMenu     = document.getElementById("plusMenu");
+const uploadImageBtn = document.getElementById("uploadImageBtn");
+const imageInput     = document.getElementById("imageInput");
+const uploadAudioBtn = document.getElementById("uploadAudioBtn");
+const audioInput     = document.getElementById("audioInput");
+const changeBgBtn    = document.getElementById("changeBgBtn");
+const bgFileInput    = document.getElementById("bgFileInput");
+
+const appShell = document.querySelector(".app-shell");
+
+// ----- helpers -----
 
 function ensureConversationExists() {
   if (conversations.length === 0) {
@@ -46,7 +61,7 @@ function renderSidebar() {
     const li = document.createElement("li");
     li.textContent = conv.title || "Untitled chat";
     if (idx === activeIndex) {
-      li.style.backgroundColor = "rgba(255,255,255,0.07)";
+      li.classList.add("active");
     }
     li.onclick = () => {
       activeIndex = idx;
@@ -67,7 +82,6 @@ function renderChat() {
 
     const bubble = document.createElement("div");
     bubble.className = "bubble";
-
     if (msg.role === "ai" && msg.easter === true) {
       bubble.classList.add("special");
     }
@@ -98,32 +112,46 @@ async function sendMessageToAPI(text) {
   return res.json();
 }
 
-function updateAccountUI() {
-  if (authUser) {
-    profileInitial.textContent = authUser[0]?.toUpperCase() || "?";
-    accountUserEl.textContent  = authUser;
-    authAreaSignedOut.style.display = "none";
-    authAreaSignedIn.style.display  = "flex";
-  } else {
-    profileInitial.textContent = "?";
-    accountUserEl.textContent  = "(not signed in)";
-    authAreaSignedOut.style.display = "flex";
-    authAreaSignedIn.style.display  = "none";
+async function saveHistoryToServer() {
+  if (!authToken) return;
+  try {
+    await fetch(HISTORY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`
+      },
+      body: JSON.stringify({
+        conversations
+      })
+    });
+  } catch (err) {
+    console.warn("Failed to save history:", err);
+  }
+}
+
+async function loadHistoryFromServer() {
+  if (!authToken) return;
+  const res = await fetch(HISTORY_URL, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${authToken}`
+    }
+  });
+
+  if (!res.ok) {
+    console.warn("No server history or error loading history");
+    return;
   }
 
-  autosaveToggle.checked = autosave && !!authUser;
-  autosaveToggle.disabled = !authUser;
+  const data = await res.json();
+  if (Array.isArray(data.conversations)) {
+    conversations = data.conversations;
+    activeIndex = conversations.length > 0 ? conversations.length - 1 : 0;
+  }
 }
 
-function toggleAccountCard() {
-  accountCard.hidden = !accountCard.hidden;
-}
-
-function setAutosavePreference(on) {
-  autosave = on;
-  localStorage.setItem("pranay_autosave", String(on));
-  updateAccountUI();
-}
+// ----- UI actions -----
 
 async function handleSubmit(e) {
   e.preventDefault();
@@ -141,6 +169,7 @@ async function handleSubmit(e) {
     role: "user",
     text
   });
+
   userInput.value = "";
   renderSidebar();
   renderChat();
@@ -165,12 +194,8 @@ async function handleSubmit(e) {
   renderChat();
   renderSidebar();
 
-  if (authToken && autosave) {
-    try {
-      await saveHistoryToServer();
-    } catch (err) {
-      console.warn("Failed to save history:", err);
-    }
+  if (authToken) {
+    await saveHistoryToServer();
   }
 }
 
@@ -186,41 +211,7 @@ function startNewChat() {
   userInput.focus();
 }
 
-async function saveHistoryToServer() {
-  if (!authToken) return;
-  await fetch(HISTORY_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${authToken}`
-    },
-    body: JSON.stringify({
-      conversations
-    })
-  });
-}
-
-async function loadHistoryFromServer() {
-  if (!authToken) return;
-  const res = await fetch(HISTORY_URL, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bearer ${authToken}`
-    }
-  });
-
-  if (!res.ok) {
-    console.warn("No server history or error loading history");
-    return;
-  }
-
-  const data = await res.json();
-  if (Array.isArray(data.conversations)) {
-    conversations = data.conversations;
-    activeIndex = conversations.length > 0 ? conversations.length - 1 : 0;
-  }
-}
-
+// sign in via Google
 window.onGoogleSignIn = async function onGoogleSignIn(googleResponse) {
   try {
     const id_token = googleResponse.credential;
@@ -258,26 +249,163 @@ window.onGoogleSignIn = async function onGoogleSignIn(googleResponse) {
 function doLogout() {
   authToken = null;
   authUser = null;
-  autosave = false;
 
   localStorage.removeItem("pranay_token");
   localStorage.removeItem("pranay_user");
-  localStorage.setItem("pranay_autosave", "false");
 
   updateAccountUI();
 }
 
+// update account block bottom-left
+function updateAccountUI() {
+  if (authUser) {
+    profileInitial.textContent = authUser[0]?.toUpperCase() || "?";
+    accountUserEl.textContent  = authUser;
+    signinBtn.style.display = "none";
+    logoutBtn.style.display = "block";
+  } else {
+    profileInitial.textContent = "?";
+    accountUserEl.textContent  = "(not signed in)";
+    signinBtn.style.display = "inline-block";
+    logoutBtn.style.display = "block"; // we'll keep sign out visible so you can clear local
+  }
+}
+
+// open/close settings menu
+settingsTrigger.addEventListener("click", () => {
+  const isHidden = settingsMenu.hasAttribute("hidden");
+  if (isHidden) {
+    settingsMenu.removeAttribute("hidden");
+  } else {
+    settingsMenu.setAttribute("hidden", "true");
+  }
+});
+
+// clicking "Sign in with Google"
+signinBtn.addEventListener("click", () => {
+  // This triggers Google's one-tap UI flow if available,
+  // or you can manually render the Google button. For now we
+  // just let onGoogleSignIn handle callback from Google's script.
+  google.accounts.id.prompt(); // this is fine, Google's script is loaded in index.html
+});
+
+// manual logout
+logoutBtn.addEventListener("click", () => {
+  doLogout();
+  renderSidebar();
+  renderChat();
+});
+
+// plus menu open/close
+plusBtn.addEventListener("click", () => {
+  const isHidden = plusMenu.hasAttribute("hidden");
+  if (isHidden) {
+    plusMenu.removeAttribute("hidden");
+  } else {
+    plusMenu.setAttribute("hidden", "true");
+  }
+});
+
+// choose image
+uploadImageBtn.addEventListener("click", () => {
+  imageInput.click();
+});
+imageInput.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  // send to backend placeholder
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    await fetch(UPLOAD_IMAGE_URL, {
+      method: "POST",
+      body: formData
+    });
+    // OPTIONAL: Add a system message saying "Image received"
+    addSystemMessage(`Image "${file.name}" uploaded (not analyzed yet).`);
+  } catch (err) {
+    addSystemMessage("Failed to upload image.");
+  }
+});
+
+// choose audio
+uploadAudioBtn.addEventListener("click", () => {
+  audioInput.click();
+});
+audioInput.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    await fetch(UPLOAD_AUDIO_URL, {
+      method: "POST",
+      body: formData
+    });
+    addSystemMessage(`Audio "${file.name}" uploaded (not transcribed yet).`);
+  } catch (err) {
+    addSystemMessage("Failed to upload audio.");
+  }
+});
+
+// change background (preset dark or clear custom)
+changeBgBtn.addEventListener("click", () => {
+  bgImageDataURL = null;
+  localStorage.removeItem("pranay_bg");
+  applyBackground();
+  plusMenu.setAttribute("hidden", "true");
+});
+
+// upload custom background image
+bgFileInput.addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    bgImageDataURL = evt.target.result;
+    localStorage.setItem("pranay_bg", bgImageDataURL);
+    applyBackground();
+  };
+  reader.readAsDataURL(file);
+
+  plusMenu.setAttribute("hidden", "true");
+});
+
+// insert a system-style bubble in chat (for status updates)
+function addSystemMessage(text) {
+  ensureConversationExists();
+  const conv = conversations[activeIndex];
+  conv.messages.push({
+    role: "ai",
+    text,
+    easter: false,
+  });
+  renderChat();
+  chatWindow.scrollTop = chatWindow.scrollHeight;
+}
+
+// actually apply background to the app-shell
+function applyBackground() {
+  if (bgImageDataURL) {
+    appShell.style.backgroundImage = `url(${bgImageDataURL})`;
+  } else {
+    appShell.style.backgroundImage = "none";
+  }
+}
+
+// ----- wire up listeners -----
+
 chatForm.addEventListener("submit", handleSubmit);
 newChatBtn.addEventListener("click", startNewChat);
 
-profileBtn.addEventListener("click", toggleAccountCard);
-logoutBtn.addEventListener("click", doLogout);
-
-autosaveToggle.addEventListener("change", (e) => {
-  setAutosavePreference(e.target.checked);
-});
-
+// init
 (async function init() {
+  // load server history if logged in
   if (authToken) {
     await loadHistoryFromServer();
   }
@@ -286,4 +414,5 @@ autosaveToggle.addEventListener("change", (e) => {
   updateAccountUI();
   renderSidebar();
   renderChat();
+  applyBackground();
 })();

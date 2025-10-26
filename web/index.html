@@ -8,88 +8,98 @@
 </head>
 <body>
   <div class="app-shell">
+
+    <!-- SIDEBAR -->
     <aside class="sidebar">
+
       <div class="sidebar-top">
-        <div class="sidebar-header">
-          <div class="brand">
-            <div class="brand-mark">🧠</div>
-            <div class="brand-text">
-              <div class="brand-name">PranayAI</div>
-              <div class="brand-status-row">
-                <div class="status-dot online"></div>
-                <div class="status-label" id="statusLabel">online</div>
-              </div>
-            </div>
-          </div>
 
-          <button id="profileBtn" class="profile-btn" title="Account / Settings">
-            <div id="profileInitial" class="profile-initial">?</div>
-          </button>
-        </div>
-
-        <div class="account-card" id="accountCard" hidden>
-          <div class="account-inner">
-            <div class="account-row">
-              <label class="account-label">User</label>
-              <div class="account-value" id="accountUser">(not signed in)</div>
-            </div>
-
-            <div class="account-row">
-              <label class="account-label">Auto-save chats</label>
-              <label class="switch">
-                <input type="checkbox" id="autosaveToggle" />
-                <span class="slider"></span>
-              </label>
-            </div>
-
-            <div class="account-actions" id="authAreaSignedOut">
-              <div id="g_id_onload"
-                data-client_id="1041769547451-ri4n3pbe7f7sfr9stt1bu0j3vgtbufd9.apps.googleusercontent.com"
-                data-context="signin"
-                data-callback="onGoogleSignIn"
-                data-auto_prompt="false">
-              </div>
-
-              <div class="g_id_signin"
-                data-type="standard"
-                data-size="medium"
-                data-theme="filled_blue"
-                data-text="signin_with"
-                data-shape="rectangular"
-                data-logo_alignment="left">
-              </div>
-            </div>
-
-            <div class="account-actions" id="authAreaSignedIn" style="display:none;">
-              <button id="logoutBtn" class="account-action-btn outline">Sign out</button>
-            </div>
-
-            <div class="account-hint">
-              Sign in with Google to sync chats across devices.
-              Turn on auto-save to store them.
+        <!-- Brand / status -->
+        <div class="brand-row">
+          <div class="brand-icon" id="brandIcon">PA</div>
+          <div class="brand-block">
+            <div class="brand-name">PranayAI</div>
+            <div class="brand-status">
+              <span class="status-dot online"></span>
+              <span class="status-text">Online</span>
             </div>
           </div>
         </div>
 
-        <div class="convos-label">Conversations</div>
-        <ul id="history" class="history-list">
+        <!-- New chat -->
+        <button id="newChatBtn" class="new-chat-btn">
+          <span class="plus-icon">+</span>
+          <span>New chat</span>
+        </button>
+
+        <!-- Conversations list -->
+        <div class="section-label">Conversations</div>
+        <ul id="history" class="history-list"></ul>
+
+        <!-- Library / etc. -->
+        <div class="section-label">Tools</div>
+        <ul class="tools-list">
+          <li class="tool-row">
+            <span class="tool-icon">📁</span>
+            <span class="tool-text">Library</span>
+          </li>
+          <li class="tool-row">
+            <span class="tool-icon">🔍</span>
+            <span class="tool-text">Deep Search</span>
+          </li>
+          <li class="tool-row">
+            <span class="tool-icon">🤖</span>
+            <span class="tool-text">Agents</span>
+          </li>
         </ul>
-        <button id="newChatBtn" class="new-chat-btn">+ New chat</button>
+
       </div>
 
+      <!-- bottom profile/settings area -->
       <div class="sidebar-bottom">
-        <div class="footer-hint">
-          No rate limits.<br />
-          No “upgrade now.”<br />
-          JD still trash at AP Bio.
+        <div class="user-card" id="userCard">
+          <div class="user-avatar" id="profileInitial">?</div>
+          <div class="user-meta">
+            <div class="user-name" id="accountUser">(not signed in)</div>
+            <button class="signin-btn" id="signinBtn">Sign in with Google</button>
+          </div>
+          <div class="user-menu-trigger" id="settingsTrigger">⋯</div>
         </div>
+
+        <div class="settings-menu" id="settingsMenu" hidden>
+          <div class="settings-item">Settings</div>
+          <div class="settings-item">Background</div>
+          <div class="settings-item">Help</div>
+          <div class="settings-item" id="logoutBtn" style="color:#f87171;">Sign out</div>
+        </div>
+
+        <div id="g_id_onload"
+          data-client_id="1041769547451-ri4n3pbe7f7sfr9stt1bu0j3vgtbufd9.apps.googleusercontent.com"
+          data-context="signin"
+          data-callback="onGoogleSignIn"
+          data-auto_prompt="false"
+          style="display:none;">
+        </div>
+        <div class="g_id_signin"
+          data-type="standard"
+          data-size="medium"
+          data-theme="filled_blue"
+          data-text="signin_with"
+          data-shape="rectangular"
+          data-logo_alignment="left"
+          style="display:none;">
+        </div>
+
       </div>
     </aside>
 
+    <!-- MAIN CHAT AREA -->
     <main class="chat-area">
-      <div id="chatWindow" class="chat-window">
-      </div>
 
+      <!-- message stream -->
+      <div id="chatWindow" class="chat-window"></div>
+
+      <!-- typing indicator -->
       <div class="typing-row" id="typingRow" hidden>
         <div class="dot"></div>
         <div class="dot"></div>
@@ -97,14 +107,70 @@
         <span class="typing-label">PranayAI is thinking…</span>
       </div>
 
+      <!-- input bar -->
       <form id="chatForm" class="input-bar">
-        <input
-          id="userInput"
-          class="input-field"
-          placeholder="Send a message..."
-          autocomplete="off"
-        />
-        <button class="send-btn" type="submit">Send</button>
+        <div class="input-inner">
+
+          <!-- left: plus / attachment -->
+          <div class="input-left">
+            <button
+              class="icon-btn"
+              id="plusBtn"
+              type="button"
+              title="More">
+              +
+            </button>
+
+            <div class="plus-menu" id="plusMenu" hidden>
+              <label class="plus-item" id="uploadImageBtn">
+                🖼 Upload image
+                <input type="file" id="imageInput" accept="image/*" hidden />
+              </label>
+
+              <label class="plus-item" id="uploadAudioBtn">
+                🎙 Upload audio
+                <input type="file" id="audioInput" accept="audio/*" hidden />
+              </label>
+
+              <button class="plus-item" id="changeBgBtn" type="button">
+                🖌 Change background
+              </button>
+
+              <label class="plus-item" id="bgUploadLabel">
+                📂 Custom background
+                <input type="file" id="bgFileInput" accept="image/*" hidden />
+              </label>
+            </div>
+          </div>
+
+          <!-- middle: text field -->
+          <input
+            id="userInput"
+            class="input-field"
+            placeholder="Message PranayAI..."
+            autocomplete="off"
+          />
+
+          <!-- right: mic + send -->
+          <div class="input-right">
+            <button
+              class="icon-btn"
+              id="micBtn"
+              type="button"
+              title="Record voice (coming soon)">
+              🎤
+            </button>
+
+            <button
+              class="send-btn"
+              type="submit"
+              id="sendBtn"
+              title="Send">
+              ➤
+            </button>
+          </div>
+
+        </div>
       </form>
     </main>
   </div>
