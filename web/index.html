@@ -2,227 +2,350 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PranayAI</title>
+  <link rel="icon" href="/logo.png" type="image/png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #121212;
+      color: #e6e6e6;
+      margin: 0;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background-color: #1f1f1f;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      box-sizing: border-box;
+      border-right: 1px solid #2a2a2a;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .logo img {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      margin-right: 10px;
+    }
+    .user-info {
+      margin-bottom: 20px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 10px;
+    }
+    .user-info img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+    .user-info span {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .chat-section {
+      flex-grow: 1;
+      overflow-y: auto;
+    }
+    .chat-section h3 {
+      margin-top: 0;
+      font-size: 14px;
+      color: #888;
+      text-transform: uppercase;
+    }
+    .chat-item {
+      background: #292929;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chat-item:hover { background: #383838; }
+    .chat-item button {
+      background: none;
+      border: none;
+      color: #999;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .new-chat {
+      background: #3b82f6;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: background 0.2s;
+    }
+    .new-chat:hover { background: #2563eb; }
 
-  <link rel="stylesheet" href="/static/style.css" />
-  <link rel="icon" type="image/png" href="/static/logo.png" />
+    /* Main chat area */
+    .main {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #121212;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+    .chat-display {
+      flex-grow: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
+    .message {
+      max-width: 70%;
+      margin-bottom: 10px;
+      padding: 12px;
+      border-radius: 8px;
+      line-height: 1.5;
+    }
+    .user-msg { background: #2563eb; color: white; align-self: flex-end; }
+    .ai-msg { background: #2a2a2a; color: #e6e6e6; align-self: flex-start; }
+
+    /* Input area */
+    .chat-input-area {
+      padding: 16px;
+      display: flex;
+      background-color: #1f1f1f;
+      border-top: 1px solid #2a2a2a;
+    }
+    .chat-input {
+      flex-grow: 1;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      background: #2a2a2a;
+      color: white;
+      font-size: 15px;
+      outline: none;
+    }
+    .send-btn {
+      margin-left: 10px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .send-btn:hover { background: #2563eb; }
+
+    /* Top right menu */
+    .menu {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+    }
+    .menu button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+    }
+    .dropdown {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 30px;
+      background: #1f1f1f;
+      border: 1px solid #333;
+      border-radius: 8px;
+      overflow: hidden;
+      width: 160px;
+    }
+    .dropdown button {
+      width: 100%;
+      padding: 10px;
+      background: none;
+      border: none;
+      color: #e6e6e6;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .dropdown button:hover { background: #2a2a2a; }
+
+    .login-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .login-box {
+      background: #1f1f1f;
+      padding: 30px;
+      border-radius: 10px;
+      width: 300px;
+      text-align: center;
+    }
+    .login-box h2 { margin-bottom: 20px; }
+    .login-box input {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      background: #2a2a2a;
+      color: white;
+    }
+    .login-box button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      background: #3b82f6;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
+  <div class="sidebar">
+    <div class="logo">
+      <img src="/logo.png" alt="PranayAI logo">
+      <strong>PranayAI</strong>
+    </div>
 
-  <div id="app-root">
+    <div class="user-info" id="user-info"></div>
 
-    <!-- ========== SIDEBAR ========== -->
-    <aside id="sidebar">
-      <div id="sidebar-header">
-        <div id="brand-block">
-          <img id="brand-logo" src="/static/logo.png" alt="PranayAI logo" />
-          <div class="brand-text">
-            <div class="brand-name-row">
-              <span class="brand-name">PranayAI</span>
-              <span class="status-dot"></span>
-              <span class="status-text" id="online-status">Online</span>
-            </div>
-            <div class="signed-in-row hidden" id="signed-in-row">
-              <span class="signed-in-email" id="signed-in-email"></span>
-            </div>
-          </div>
-        </div>
+    <button class="new-chat" id="new-chat">+ New chat</button>
 
-        <button id="new-chat-btn" class="pill-btn">
-          <span class="pill-icon">✚</span>
-          <span class="pill-text">New chat</span>
-        </button>
-      </div>
+    <div class="chat-section">
+      <h3>Chats</h3>
+      <div id="chat-list"></div>
 
-      <div id="sidebar-section-label">Chats</div>
-
-      <div id="chat-list">
-        <div class="chat-list-item active-chat">
-          <span class="chat-list-title">New chat</span>
-        </div>
-      </div>
-
-      <div id="sidebar-footer">
-        <button id="signin-btn" class="signin-btn">
-          <img class="google-icon" src="/static/google-icon.png" alt="G" />
-          <span id="signin-btn-text">Sign in</span>
-        </button>
-      </div>
-    </aside>
-
-    <!-- ========== MAIN AREA ========== -->
-    <main id="main">
-
-      <!-- ⋯ menu button -->
-      <button id="menu-button" class="icon-btn" title="Menu">⋯</button>
-
-      <!-- ⋯ popover -->
-      <div id="settings-popover" class="popover hidden">
-        <div class="popover-item" data-action="open-settings">Settings</div>
-        <div class="popover-item" data-action="open-background">Background</div>
-        <div class="popover-item" data-action="open-help">Help</div>
-        <div class="popover-divider"></div>
-        <div class="popover-item danger" data-action="sign-out">Sign out</div>
-      </div>
-
-      <!-- chat scroll -->
-      <section id="chat-scroll">
-        <div id="chat-box"></div>
-
-        <!-- typing dots -->
-        <div id="loading-dots" class="hidden">
-          <span class="dot"></span>
-          <span class="dot"></span>
-          <span class="dot"></span>
-        </div>
-      </section>
-
-      <!-- bottom input bar -->
-      <footer id="input-bar">
-        <!-- + button -->
-        <button id="plus-button" class="icon-btn" title="More">+</button>
-
-        <!-- plus popover (JUST upload image now) -->
-        <div id="upload-popover" class="popover hidden">
-          <div class="popover-item" id="upload-image-trigger">Upload image</div>
-        </div>
-
-        <!-- hidden file inputs -->
-        <input id="image-file-input" type="file" accept="image/*" class="hidden" />
-        <input id="bg-file-input" type="file" accept="image/*" class="hidden" />
-
-        <!-- text field -->
-        <input
-          id="user-input"
-          type="text"
-          placeholder="Message PranayAI..."
-          autocomplete="off"
-        />
-
-        <!-- send -->
-        <button id="send-button" class="send-btn" title="Send">➤</button>
-      </footer>
-    </main>
-  </div>
-
-  <!-- ========= SIGN-IN MODAL ========= -->
-  <div id="signin-modal" class="overlay hidden">
-    <div class="overlay-card wide-card">
-      <div class="overlay-card-header">
-        <div class="overlay-title">Sign in</div>
-        <button class="overlay-close" id="signin-close">✕</button>
-      </div>
-
-      <div class="overlay-body">
-        <p class="overlay-body-main">
-          Sign in to save chats to your account and access them from any device.
-        </p>
-
-        <button class="google-big-btn" id="google-login-btn">
-          <img class="google-icon" src="/static/google-icon.png" alt="Google"/>
-          <span>Continue with Google</span>
-        </button>
-
-        <div class="signin-divider-row">
-          <div class="signin-divider-line"></div>
-          <div class="signin-divider-text">or</div>
-          <div class="signin-divider-line"></div>
-        </div>
-
-        <div class="signin-email-block">
-          <label class="signin-label">Email</label>
-          <input id="login-email" class="signin-input" type="email" placeholder="you@example.com" />
-          <label class="signin-label signin-password-label">Password</label>
-          <input id="login-pass" class="signin-input" type="password" placeholder="••••••••" />
-          <button class="neutral-btn full-btn" id="email-login-btn">Sign in with email</button>
-        </div>
-
-        <p class="overlay-body-foot">
-          By continuing, you agree to responsible use.  
-          Do not submit AI output as graded work without teacher permission.
-        </p>
-      </div>
+      <h3>Projects</h3>
+      <div id="project-list"></div>
     </div>
   </div>
 
-  <!-- ========= BACKGROUND PICKER MODAL ========= -->
-  <div id="background-modal" class="overlay hidden">
-    <div class="overlay-card wide-card">
-      <div class="overlay-card-header">
-        <div class="overlay-title">Choose background</div>
-        <button class="overlay-close" id="background-close">✕</button>
+  <div class="main" id="main">
+    <div class="menu">
+      <button id="menu-btn">⋮</button>
+      <div class="dropdown" id="dropdown">
+        <button id="background-btn">Change Background</button>
+        <button id="help-btn">Help</button>
+        <button id="logout-btn">Sign Out</button>
       </div>
+    </div>
 
-      <div class="overlay-body">
-        <div class="bg-grid">
-          <div class="bg-choice" data-bg="/static/bg1.jpg" style="background-image:url('/static/bg1.jpg')">
-            <div class="bg-choice-label">Purple glow</div>
-          </div>
-          <div class="bg-choice" data-bg="/static/bg2.jpg" style="background-image:url('/static/bg2.jpg')">
-            <div class="bg-choice-label">Blue tech</div>
-          </div>
-          <div class="bg-choice" data-bg="/static/bg3.jpg" style="background-image:url('/static/bg3.jpg')">
-            <div class="bg-choice-label">Abstract shapes</div>
-          </div>
-        </div>
+    <div class="chat-display" id="chat-display"></div>
 
-        <div class="bg-upload-row">
-          <button class="neutral-btn" id="bg-upload-btn">Upload your own…</button>
-        </div>
-
-        <p class="overlay-body-foot smaller-foot">
-          Keep backgrounds school-appropriate.
-        </p>
-      </div>
+    <div class="chat-input-area">
+      <input type="text" id="chat-input" class="chat-input" placeholder="Message PranayAI..." />
+      <button id="send-btn" class="send-btn">→</button>
     </div>
   </div>
 
-  <!-- ========= SETTINGS MODAL ========= -->
-  <div id="prefs-modal" class="overlay hidden">
-    <div class="overlay-card">
-      <div class="overlay-card-header">
-        <div class="overlay-title">Settings</div>
-        <button class="overlay-close" id="prefs-close">✕</button>
-      </div>
-
-      <div class="overlay-body">
-        <p class="overlay-body-main">
-          Future: model quality, data retention, voice, etc.
-        </p>
-        <p class="overlay-body-foot">
-          For now: PranayAI may be wrong sometimes. Double-check important stuff.
-        </p>
-      </div>
+  <div class="login-modal" id="login-modal">
+    <div class="login-box">
+      <h2>Sign In</h2>
+      <input type="text" id="name-input" placeholder="First name" />
+      <input type="email" id="email-input" placeholder="Email" />
+      <button id="login-btn">Sign In</button>
+      <p style="margin:10px 0;">or</p>
+      <button onclick="googleLogin()">Continue with Google</button>
     </div>
   </div>
 
-  <!-- ========= HELP / POLICY MODAL ========= -->
-  <div id="help-modal" class="overlay hidden">
-    <div class="overlay-card">
-      <div class="overlay-card-header">
-        <div class="overlay-title">Responsible Use</div>
-        <button class="overlay-close" id="help-close">✕</button>
-      </div>
+  <script>
+    const chatDisplay = document.getElementById("chat-display");
+    const chatInput = document.getElementById("chat-input");
+    const sendBtn = document.getElementById("send-btn");
+    const userInfo = document.getElementById("user-info");
+    const loginModal = document.getElementById("login-modal");
+    const dropdown = document.getElementById("dropdown");
+    const menuBtn = document.getElementById("menu-btn");
 
-      <div class="overlay-body">
-        <p class="overlay-body-main">
-          PranayAI is here to help you understand, study, and learn.
-          
-          Do not use this to cheat on tests, quizzes, or assignments
-          at Poway Unified. Use this like a tutor.
-          
-          Do not turn in AI responses as graded work unless a teacher
-          says it's allowed.
-        </p>
-        <p class="overlay-body-foot smaller-foot">
-          If you see unsafe content or something that violates school rules,
-          stop using the tool and talk to a teacher or staff member.
-        </p>
-      </div>
-    </div>
-  </div>
+    menuBtn.addEventListener("click", () => {
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    });
 
-  <script src="/static/script.js"></script>
+    async function loadUser() {
+      const res = await fetch("/me");
+      const data = await res.json();
+      if (data.logged_in) {
+        loginModal.style.display = "none";
+        const u = data.user;
+        userInfo.innerHTML = `<img src="${u.picture}" alt=""><span>${u.name}</span>`;
+      } else {
+        loginModal.style.display = "flex";
+      }
+    }
+    loadUser();
+
+    async function googleLogin() {
+      window.location.href = "/google-login";
+    }
+
+    document.getElementById("login-btn").addEventListener("click", async () => {
+      const name = document.getElementById("name-input").value;
+      const email = document.getElementById("email-input").value;
+      if (name && email) {
+        localStorage.setItem("user", JSON.stringify({ name, email }));
+        userInfo.innerHTML = `<span>${name}</span>`;
+        loginModal.style.display = "none";
+      }
+    });
+
+    sendBtn.addEventListener("click", async () => {
+      const msg = chatInput.value.trim();
+      if (!msg) return;
+      const userDiv = document.createElement("div");
+      userDiv.className = "message user-msg";
+      userDiv.textContent = msg;
+      chatDisplay.appendChild(userDiv);
+      chatInput.value = "";
+
+      const res = await fetch("/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg }),
+      });
+      const data = await res.json();
+      const aiDiv = document.createElement("div");
+      aiDiv.className = "message ai-msg";
+      aiDiv.textContent = data.response || "Error processing request.";
+      chatDisplay.appendChild(aiDiv);
+      chatDisplay.scrollTop = chatDisplay.scrollHeight;
+    });
+
+    document.getElementById("background-btn").addEventListener("click", async () => {
+      const bg = prompt("Enter background image URL:");
+      if (bg) {
+        document.getElementById("main").style.backgroundImage = `url('${bg}')`;
+        await fetch("/set-background", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ background_url: bg }),
+        });
+      }
+    });
+
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      window.location.href = "/logout";
+    });
+  </script>
 </body>
 </html>

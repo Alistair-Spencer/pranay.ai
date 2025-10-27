@@ -1,144 +1,177 @@
 import os
-import time
-import jwt
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
+import uuid
+import sqlite3
+import shutil
+from datetime import datetime
+from fastapi import FastAPI, Request, UploadFile, Form
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from dotenv import load_dotenv
+from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
+from dotenv import load_dotenv
+from starlette.middleware.sessions import SessionMiddleware
+from authlib.integrations.starlette_client import OAuth
 
-# load env
+# ===== Load Environment Variables =====
 load_dotenv()
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_INPUT_MODEL = os.getenv("OPENAI_INPUT_MODEL", "gpt-3.5-turbo")
-OPENAI_OUTPUT_MODEL = os.getenv("OPENAI_OUTPUT_MODEL", "gpt-4o")
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-JWT_SECRET = os.getenv("JWT_SECRET", "dev-secret-change-this")
-
-if not OPENAI_API_KEY:
-    raise RuntimeError("Missing OPENAI_API_KEY in environment")
-
-client = OpenAI(api_key=OPENAI_API_KEY)
 
 app = FastAPI(title="PranayAI")
 
-# CORS so browser JS can call /chat on same origin or from your domain
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # lock to your domain later if you want
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve the /web folder at root-level predictable paths
-# /static/style.css, /static/script.js, /static/logo.png, etc.
-app.mount("/static", StaticFiles(directory="web"), name="static")
+app.add_middleware(SessionMiddleware, secret_key=os.getenv("JWT_SECRET", "supersecret"))
 
-class ChatRequest(BaseModel):
-    message: str
-    session_id: str | None = "default"
-    consent_ok: bool | None = True
+# ===== Static & Files =====
+if not os.path.exists("uploads"):
+    os.makedirs("uploads")
 
-class ChatResponse(BaseModel):
-    response: str
-    easter_egg: bool = False
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-class LoginRequest(BaseModel):
-    token: str
+# ===== Database =====
+DB_PATH = "data/pranayai.db"
+os.makedirs("data", exist_ok=True)
+conn = sqlite3.connect(DB_PATH)
+c = conn.cursor()
+c.execute("""CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE,
+    name TEXT,
+    picture TEXT
+)""")
+c.execute("""CREATE TABLE IF NOT EXISTS chats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_email TEXT,
+    title TEXT,
+    content TEXT,
+    timestamp TEXT
+)""")
+c.execute("""CREATE TABLE IF NOT EXISTS projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_email TEXT,
+    name TEXT
+)""")
+conn.commit()
+conn.close()
 
-def create_jwt(email: str):
-    payload = {"email": email, "exp": time.time() + 60 * 60 * 24}
-    return jwt.encode(payload, JWT_SECRET, algorithm="HS256")
+# ===== OpenAI =====
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-@app.get("/")
-async def serve_index():
-    # send the HTML for the app shell
-    return FileResponse("web/index.html")
+# ===== Google OAuth =====
+oauth = OAuth()
+oauth.register(
+    name="google",
+    client_id=os.getenv("GOOGLE_CLIENT_ID"),
+    client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
+    access_token_url="https://accounts.google.com/o/oauth2/token",
+    access_token_params=None,
+    authorize_url="https://accounts.google.com/o/oauth2/auth",
+    authorize_params=None,
+    api_base_url="https://www.googleapis.com/oauth2/v1/",
+    client_kwargs={"scope": "openid email profile"},
+)
+
+# ===== ROUTES =====
+
+@app.get("/", response_class=HTMLResponse)
+async def home():
+    with open("web/index.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
+
+
+@app.get("/google-login")
+async def google_login(request: Request):
+    redirect_uri = request.url_for("google_callback")
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+
+@app.get("/google-callback")
+async def google_callback(request: Request):
+    token = await oauth.google.authorize_access_token(request)
+    user = await oauth.google.parse_id_token(request, token)
+    email = user["email"]
+    name = user.get("name", "User")
+    picture = user.get("picture", "")
+
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("INSERT OR IGNORE INTO users (email, name, picture) VALUES (?, ?, ?)", (email, name, picture))
+    conn.commit()
+    conn.close()
+
+    request.session["user"] = {"email": email, "name": name, "picture": picture}
+    return RedirectResponse(url="/")
+
+
+@app.get("/me")
+async def get_user(request: Request):
+    user = request.session.get("user")
+    if not user:
+        return JSONResponse({"logged_in": False})
+    return JSONResponse({"logged_in": True, "user": user})
+
+
+@app.post("/chat")
+async def chat(request: Request):
+    data = await request.json()
+    user_message = data.get("message")
+    user = request.session.get("user")
+
+    if not user_message:
+        return JSONResponse({"error": "Message missing"}, status_code=400)
+
+    # OpenAI GPT-4o response
+    completion = client.chat.completions.create(
+        model=os.getenv("OPENAI_OUTPUT_MODEL", "gpt-4o"),
+        messages=[{"role": "user", "content": user_message}],
+    )
+    response_text = completion.choices[0].message.content
+
+    if user:
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute("INSERT INTO chats (user_email, title, content, timestamp) VALUES (?, ?, ?, ?)",
+                  (user["email"], user_message[:30], response_text, datetime.now().isoformat()))
+        conn.commit()
+        conn.close()
+
+    return JSONResponse({"response": response_text})
+
+
+@app.post("/upload-image")
+async def upload_image(file: UploadFile):
+    ext = file.filename.split(".")[-1]
+    file_path = f"uploads/{uuid.uuid4()}.{ext}"
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"url": f"/{file_path}"}
+
+
+@app.post("/set-background")
+async def set_background(request: Request):
+    data = await request.json()
+    background_url = data.get("background_url")
+    request.session["background"] = background_url
+    return {"message": "Background updated"}
+
+
+@app.get("/get-background")
+async def get_background(request: Request):
+    bg = request.session.get("background", None)
+    return {"background": bg}
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/")
+
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
-
-@app.post("/google-login")
-async def google_login(body: LoginRequest):
-    # in production you'd verify body.token against Google
-    if not body.token:
-        raise HTTPException(status_code=400, detail="Missing token")
-    return {"jwt": create_jwt("user@example.com"), "status": "ok"}
-
-@app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(body: ChatRequest):
-    """
-    Main chat route.
-    1. special JD easter egg
-    2. run gpt-3.5-turbo to clean/interpret the user ask
-    3. run gpt-4o to generate final nice answer
-    """
-    user_msg = (body.message or "").strip()
-    lowered = user_msg.lower()
-
-    # easter egg
-    if "hi im jd" in lowered or "hi i'm jd" in lowered or "i’m jd" in lowered:
-        return ChatResponse(
-            response="hey jd, I heard you’re trash at ap bio.",
-            easter_egg=True
-        )
-
-    # step 1: preprocess with cheaper model
-    try:
-        preprocess = client.chat.completions.create(
-            model=OPENAI_INPUT_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Rewrite the user's message so it's as clear and direct as possible. Keep intent the same."
-                },
-                {"role": "user", "content": user_msg},
-            ],
-        )
-        processed = preprocess.choices[0].message.content.strip()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Input model failed: {e}")
-
-    # step 2: final answer with nicer model
-    try:
-        completion = client.chat.completions.create(
-            model=OPENAI_OUTPUT_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are PranayAI. You answer like a smart friend, direct and useful. "
-                        "No corporate buzzwords. Be honest, clear, and helpful."
-                    )
-                },
-                {"role": "user", "content": processed},
-            ],
-        )
-        answer = completion.choices[0].message.content.strip()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Output model failed: {e}")
-
-    return ChatResponse(response=answer, easter_egg=False)
-
-@app.post("/generate-image")
-async def generate_image(request: Request):
-    """
-    Future feature: image generation.
-    Right now just placeholder to prove endpoint exists.
-    """
-    data = await request.json()
-    prompt = data.get("prompt", "A futuristic tech wallpaper in dark purple light")
-    try:
-        image = client.images.generate(
-            model="gpt-image-1",
-            prompt=prompt,
-            size="1024x1024"
-        )
-        return {"url": image.data[0].url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Image generation failed: {e}")
+    return {"status": "running", "model": os.getenv("OPENAI_OUTPUT_MODEL")}
