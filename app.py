@@ -1,714 +1,467 @@
 import os
 import uuid
-import shutil
-import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import Optional, List, Dict, Any
 
-from fastapi import FastAPI, Request, UploadFile, Form, File
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, FileResponse
+from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException, Depends
+from fastapi.responses import JSONResponse, FileResponse, HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-
+from starlette.middleware.sessions import SessionMiddleware
+from pydantic import BaseModel
 from dotenv import load_dotenv
 from openai import OpenAI
+import jwt
 
-from starlette.middleware.sessions import SessionMiddleware
-from authlib.integrations.starlette_client import OAuth
-
-# -------------------------------------------------
-# ENV / SETUP
-# -------------------------------------------------
+# -----------------------
+# ENV + CLIENTS
+# -----------------------
 
 load_dotenv()
 
-OPENAI_API_KEY       = os.getenv("OPENAI_API_KEY", "")
-OPENAI_MODEL         = os.getenv("OPENAI_OUTPUT_MODEL", "gpt-4o")
-GOOGLE_CLIENT_ID     = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
-GOOGLE_REDIRECT_URI  = os.getenv("GOOGLE_REDIRECT_URI", "https://www.pranayai.com/google-callback")
-JWT_SECRET           = os.getenv("JWT_SECRET", "dev-change-this")
-UPLOADS_DIR          = os.getenv("UPLOADS_DIR", "uploads")
-DB_DIR               = "data"
-DB_PATH              = os.path.join(DB_DIR, "pranayai.db")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_INPUT_MODEL = os.getenv("OPENAI_INPUT_MODEL", "gpt-3.5-turbo")
+OPENAI_OUTPUT_MODEL = os.getenv("OPENAI_OUTPUT_MODEL", "gpt-4o")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+JWT_SECRET = os.getenv("JWT_SECRET", "change_this_to_a_long_random_secret")
+PORT = int(os.getenv("PORT", "8000"))
 
-os.makedirs(DB_DIR, exist_ok=True)
-os.makedirs(UPLOADS_DIR, exist_ok=True)
-os.makedirs("web", exist_ok=True)
+if not OPENAI_API_KEY:
+    print("WARNING: OPENAI_API_KEY is not set. The /chat route will 500.")
 
-app = FastAPI(title="PranayAI", docs_url=None, redoc_url=None)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
-# CORS - loosen now, you can tighten later
+# in-memory db (Render starter only - we replace w/ disk/db later)
+USERS: Dict[str, Dict[str, Any]] = {}
+SESSIONS: Dict[str, str] = {}
+CHATS: Dict[str, List[Dict[str, Any]]] = {}
+PROJECTS: Dict[str, List[Dict[str, Any]]] = {}
+USER_BG: Dict[str, str] = {}
+
+# structure:
+# USERS[user_id] = {
+#    "name": "...",
+#    "email": "...",
+#    "picture": "...(or default)",
+# }
+#
+# CHATS[user_id] = [
+#    {
+#      "id": "chat_123",
+#      "title": "Bio Unit 3",
+#      "created_at": "...iso...",
+#      "messages": [
+#           {"role":"user","text":"...","ts":"..."},
+#           {"role":"assistant","text":"...","ts":"..."},
+#      ]
+#    },
+#    ...
+# ]
+#
+# PROJECTS[user_id] = [
+#    {"id":"proj_...","name":"Math Study"},
+#    ...
+# ]
+#
+# USER_BG[user_id] = "/web/bg2.jpg" or "none"
+
+def new_user(email: str, name: str, picture: str = "/web/logo.png") -> str:
+    """
+    Create a new user if not exists and return user_id.
+    """
+    for uid, data in USERS.items():
+        if data["email"].lower() == email.lower():
+            return uid
+
+    user_id = str(uuid.uuid4())
+    USERS[user_id] = {
+        "name": name,
+        "email": email,
+        "picture": picture,
+    }
+    CHATS[user_id] = []
+    PROJECTS[user_id] = [
+        {"id": str(uuid.uuid4()), "name": "Math Study"},
+        {"id": str(uuid.uuid4()), "name": "Bio Unit 3"},
+        {"id": str(uuid.uuid4()), "name": "History DBQ Draft"},
+    ]
+    USER_BG[user_id] = "none"
+    return user_id
+
+
+def create_session(user_id: str) -> str:
+    sess_id = str(uuid.uuid4())
+    SESSIONS[sess_id] = user_id
+    return sess_id
+
+
+def get_user_id_from_cookie(request: Request) -> Optional[str]:
+    sess_id = request.cookies.get("session_id")
+    if not sess_id:
+        return None
+    return SESSIONS.get(sess_id)
+
+
+def require_user(request: Request) -> str:
+    uid = get_user_id_from_cookie(request)
+    if not uid:
+        raise HTTPException(status_code=401, detail="Not signed in")
+    return uid
+
+
+# -----------------------
+# FASTAPI APP
+# -----------------------
+
+app = FastAPI()
+
+# Allow browser JS from same origin to talk to API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # lock down later if you want
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# session cookie
-app.add_middleware(SessionMiddleware, secret_key=JWT_SECRET)
-
-# static mount for uploaded files and backgrounds
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
-app.mount("/web", StaticFiles(directory="web"), name="web")
-
-client = OpenAI(api_key=OPENAI_API_KEY)
-
-# OAuth (Google)
-oauth = OAuth()
-oauth.register(
-    name="google",
-    client_id=GOOGLE_CLIENT_ID,
-    client_secret=GOOGLE_CLIENT_SECRET,
-    access_token_url="https://oauth2.googleapis.com/token",
-    authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
-    api_base_url="https://www.googleapis.com/oauth2/v2/",
-    client_kwargs={"scope": "openid email profile"},
+# session middleware (used for potential google auth handoff etc)
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=JWT_SECRET,
+    same_site="lax",
+    https_only=True,
 )
 
-# -------------------------------------------------
-# DB SETUP
-# -------------------------------------------------
+# serve /web/* as static
+app.mount("/web", StaticFiles(directory="web"), name="web")
 
-def db_conn():
-    return sqlite3.connect(DB_PATH)
 
-def init_db():
-    conn = db_conn()
-    c = conn.cursor()
+# -----------------------
+# UTIL
+# -----------------------
 
-    # users (email is key)
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        email TEXT PRIMARY KEY,
-        name TEXT,
-        picture TEXT
-    )
-    """)
+def friendly_timestamp() -> str:
+    return datetime.utcnow().isoformat() + "Z"
 
-    # chats
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS chats (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_email TEXT,
-        title TEXT,
-        created_at TEXT,
-        FOREIGN KEY(user_email) REFERENCES users(email)
-    )
-    """)
 
-    # messages
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        chat_id INTEGER,
-        role TEXT,
-        content TEXT,
-        msg_type TEXT,
-        created_at TEXT,
-        FOREIGN KEY(chat_id) REFERENCES chats(id)
-    )
-    """)
-
-    # backgrounds
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS backgrounds (
-        user_email TEXT PRIMARY KEY,
-        bg_url TEXT
-    )
-    """)
-
-    # projects
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS projects (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_email TEXT,
-        title TEXT,
-        created_at TEXT,
-        FOREIGN KEY(user_email) REFERENCES users(email)
-    )
-    """)
-
-    conn.commit()
-    conn.close()
-
-init_db()
-
-# -------------------------------------------------
-# HELPERS
-# -------------------------------------------------
-
-def now_iso():
-    return datetime.now().isoformat()
-
-def get_session_user(request: Request):
-    # session["user"] looks like {email, name, picture}
-    u = request.session.get("user")
-    if u:
-        return u
-    # allow guest mode:
-    # if no user in session, create a guest id in-session
-    if not request.session.get("guest_id"):
-        request.session["guest_id"] = f"guest-{uuid.uuid4().hex[:10]}"
-    return {
-        "email": request.session["guest_id"] + "@guest.local",
-        "name": "Guest",
-        "picture": ""
-    }
-
-def set_session_user(request: Request, email: str, name: str, picture: str = ""):
-    request.session["user"] = {
-        "email": email,
-        "name": name,
-        "picture": picture
-    }
-
-def is_guest(user_dict):
-    return user_dict["email"].endswith("@guest.local")
-
-def upsert_user(email: str, name: str, picture: str = ""):
-    conn = db_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT OR IGNORE INTO users (email, name, picture) VALUES (?,?,?)",
-        (email, name, picture)
-    )
-    c.execute(
-        "UPDATE users SET name=?, picture=? WHERE email=?",
-        (name, picture, email)
-    )
-    conn.commit()
-    conn.close()
-
-def create_chat(user_email: str, title_hint: str = "New chat"):
-    conn = db_conn()
-    c = conn.cursor()
-    created = now_iso()
-    c.execute(
-        "INSERT INTO chats (user_email, title, created_at) VALUES (?,?,?)",
-        (user_email, title_hint[:60], created)
-    )
-    chat_id = c.lastrowid
-    conn.commit()
-    conn.close()
-    return chat_id
-
-def get_chats_for_user(user_email: str):
-    conn = db_conn()
-    c = conn.cursor()
-    c.execute(
-        "SELECT id, title, created_at FROM chats WHERE user_email=? ORDER BY id DESC",
-        (user_email,)
-    )
-    rows = c.fetchall()
-    conn.close()
-    return [
-        {"id": rid, "title": t or "New chat", "created_at": ts}
-        for (rid, t, ts) in rows
-    ]
-
-def get_chat_owner_email(chat_id: int):
-    conn = db_conn()
-    c = conn.cursor()
-    c.execute("SELECT user_email FROM chats WHERE id=?", (chat_id,))
-    row = c.fetchone()
-    conn.close()
-    return row[0] if row else None
-
-def set_chat_title(chat_id: int, user_email: str, new_title: str):
-    conn = db_conn()
-    c = conn.cursor()
-    # check ownership
-    c.execute("SELECT id FROM chats WHERE id=? AND user_email=?", (chat_id, user_email))
-    row = c.fetchone()
-    if not row:
-        conn.close()
-        return
-    c.execute("UPDATE chats SET title=? WHERE id=?", (new_title[:60], chat_id))
-    conn.commit()
-    conn.close()
-
-def add_message(chat_id: int, role: str, content: str, msg_type: str = "text"):
-    conn = db_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO messages (chat_id, role, content, msg_type, created_at) VALUES (?,?,?,?,?)",
-        (chat_id, role, content, msg_type, now_iso())
-    )
-    conn.commit()
-    conn.close()
-
-def get_messages(chat_id: int, user_email: str):
-    # check chat ownership
-    owner = get_chat_owner_email(chat_id)
-    if owner != user_email:
-        return []
-    conn = db_conn()
-    c = conn.cursor()
-    c.execute(
-        "SELECT role, content, msg_type, created_at FROM messages WHERE chat_id=? ORDER BY id ASC",
-        (chat_id,)
-    )
-    rows = c.fetchall()
-    conn.close()
-    return [
-        {"role": r, "content": ct, "msg_type": mt, "created_at": ts}
-        for (r, ct, mt, ts) in rows
-    ]
-
-def delete_chat_row(chat_id: int, user_email: str):
-    conn = db_conn()
-    c = conn.cursor()
-    # verify ownership
-    c.execute("SELECT id FROM chats WHERE id=? AND user_email=?", (chat_id, user_email))
-    row = c.fetchone()
-    if not row:
-        conn.close()
-        return False
-    c.execute("DELETE FROM messages WHERE chat_id=?", (chat_id,))
-    c.execute("DELETE FROM chats WHERE id=?", (chat_id,))
-    conn.commit()
-    conn.close()
-    return True
-
-def get_background(user_email: str):
-    conn = db_conn()
-    c = conn.cursor()
-    c.execute("SELECT bg_url FROM backgrounds WHERE user_email=?", (user_email,))
-    row = c.fetchone()
-    conn.close()
-    return row[0] if row else ""
-
-def set_background(user_email: str, bg_url: str):
-    conn = db_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT OR IGNORE INTO backgrounds (user_email, bg_url) VALUES (?,?)",
-        (user_email, bg_url)
-    )
-    c.execute(
-        "UPDATE backgrounds SET bg_url=? WHERE user_email=?",
-        (bg_url, user_email)
-    )
-    conn.commit()
-    conn.close()
-
-def get_projects_for_user(user_email: str):
-    conn = db_conn()
-    c = conn.cursor()
-    c.execute(
-        "SELECT id, title, created_at FROM projects WHERE user_email=? ORDER BY id DESC",
-        (user_email,)
-    )
-    rows = c.fetchall()
-    conn.close()
-    return [
-        {"id": rid, "title": t, "created_at": ts}
-        for (rid, t, ts) in rows
-    ]
-
-def create_project(user_email: str, title: str):
-    conn = db_conn()
-    c = conn.cursor()
-    created = now_iso()
-    c.execute(
-        "INSERT INTO projects (user_email, title, created_at) VALUES (?,?,?)",
-        (user_email, title[:100], created)
-    )
-    pid = c.lastrowid
-    conn.commit()
-    conn.close()
-    return pid
-
-def rename_project(user_email: str, project_id: int, new_title: str):
-    conn = db_conn()
-    c = conn.cursor()
-    c.execute(
-        "SELECT id FROM projects WHERE id=? AND user_email=?",
-        (project_id, user_email)
-    )
-    row = c.fetchone()
-    if not row:
-        conn.close()
-        return False
-    c.execute(
-        "UPDATE projects SET title=? WHERE id=?",
-        (new_title[:100], project_id)
-    )
-    conn.commit()
-    conn.close()
-    return True
-
-def delete_project_row(user_email: str, project_id: int):
-    conn = db_conn()
-    c = conn.cursor()
-    c.execute(
-        "SELECT id FROM projects WHERE id=? AND user_email=?",
-        (project_id, user_email)
-    )
-    row = c.fetchone()
-    if not row:
-        conn.close()
-        return False
-    c.execute("DELETE FROM projects WHERE id=?", (project_id,))
-    conn.commit()
-    conn.close()
-    return True
-
-# -------------------------------------------------
-# MODEL CALLS
-# -------------------------------------------------
-
-def call_model(messages):
+def pick_or_create_chat(user_id: str) -> Dict[str, Any]:
     """
-    messages: [{role:"user"/"assistant"/"system", content:"..."}]
-    returns string response from the model.
+    Grab newest chat or create a brand new one called 'New chat'.
+    """
+    if user_id not in CHATS:
+        CHATS[user_id] = []
+
+    if len(CHATS[user_id]) == 0:
+        c = {
+            "id": str(uuid.uuid4()),
+            "title": "New chat",
+            "created_at": friendly_timestamp(),
+            "messages": [],
+        }
+        CHATS[user_id].insert(0, c)
+        return c
+    return CHATS[user_id][0]
+
+
+def summarize_title(history: List[Dict[str, Any]]) -> str:
+    """
+    quick dumb heuristic: look at first user message and shorten to 6 words
+    """
+    for m in history:
+        if m["role"] == "user":
+            words = m["text"].strip().split()
+            return " ".join(words[:6])
+    return "New chat"
+
+
+async def call_openai(user_text: str, image_data_b64: Optional[str]) -> str:
+    """
+    Calls OpenAI. If image_data_b64 is provided, ask GPT-4o vision-style.
+    Otherwise do normal text.
     """
     if not OPENAI_API_KEY:
-        return "Model is not configured (missing OPENAI_API_KEY)."
+        return "[OpenAI key not configured]"
 
-    resp = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=messages,
+    # message list for model
+    msgs = []
+
+    # system prompt w/ safe school policy
+    msgs.append({
+        "role": "system",
+        "content": (
+            "You are PranayAI, a study assistant for students in Poway Unified. "
+            "You help explain, you don't just give final answers to turn in. "
+            "Always encourage using results responsibly."
+        )
+    })
+
+    # user block
+    if image_data_b64:
+        # vision style prompt
+        # NOTE: true vision multimodal with OpenAI REST is different format
+        # here we just tell the model there's an image, but not actually sending bytes yet,
+        # because that's a separate upload route we'd wire later.
+        msgs.append({
+            "role": "user",
+            "content": f"[Image attached - base64 not fully wired yet]\n{user_text}"
+        })
+    else:
+        msgs.append({
+            "role": "user",
+            "content": user_text
+        })
+
+    # Use output model for final reasoning (gpt-4o)
+    completion = client.chat.completions.create(
+        model=OPENAI_OUTPUT_MODEL,
+        messages=msgs,
+        temperature=0.4,
     )
-    return resp.choices[0].message.content
 
-def generate_title_from_first_user_msg(first_user_msg: str):
-    """
-    Ask model to summarize user's first message into a short chat title.
-    You can keep this cheap because it's tiny text.
-    """
-    prompt = (
-        "Summarize this request in 4 words max with no punctuation. "
-        "Make it sound like a topic name, not a sentence:\n\n"
-        f"{first_user_msg}"
-    )
-    result = call_model([
-        {"role": "user", "content": prompt}
-    ])
-    # fallback
-    if not result:
-        return "New chat"
-    return result.strip().replace("\n", " ")[:60]
+    # new-style client returns .choices[0].message.content
+    return completion.choices[0].message.content if completion.choices else "[no response]"
 
-# -------------------------------------------------
-# ROUTES: FRONTEND SHELL
-# -------------------------------------------------
+
+# -----------------------
+# ROUTES
+# -----------------------
 
 @app.get("/", response_class=HTMLResponse)
-def serve_index():
-    path = os.path.join("web", "index.html")
-    if os.path.exists(path):
-        return FileResponse(path, media_type="text/html")
-    return HTMLResponse("<h1>Missing web/index.html</h1>", status_code=500)
+async def serve_index():
+    # return the built React-style HTML we wrote
+    with open("web/index.html", "r", encoding="utf-8") as f:
+        return f.read()
 
-@app.get("/health")
-def health():
-    return {"ok": True, "model": OPENAI_MODEL}
-
-# -------------------------------------------------
-# ROUTES: AUTH
-# -------------------------------------------------
 
 @app.get("/me")
-def me(request: Request):
-    u = request.session.get("user")
-    if u:
-        # logged in
+async def me(request: Request):
+    uid = get_user_id_from_cookie(request)
+    if uid and uid in USERS:
+        u = USERS[uid]
         return {
             "logged_in": True,
             "user": {
-                "id": u["email"],
                 "name": u["name"],
                 "email": u["email"],
-                "picture": u.get("picture",""),
+                "picture": u["picture"],
+            },
+            "background": USER_BG.get(uid, "none"),
+        }
+    else:
+        return {
+            "logged_in": False,
+            "user": {
+                "name": "Guest",
+                "email": "Not signed in",
+                "picture": "/web/logo.png",
+            },
+            "background": "none",
+        }
+
+
+class ChatRequest(BaseModel):
+    message: str
+    image_b64: Optional[str] = None
+    chat_id: Optional[str] = None
+
+
+@app.post("/chat")
+async def chat_endpoint(req: ChatRequest, request: Request):
+    uid = get_user_id_from_cookie(request)
+
+    # if not signed in, let them still chat but it's "guest" in memory
+    guest_mode = False
+    if not uid:
+        guest_mode = True
+        uid = "GUEST"
+        if uid not in USERS:
+            USERS[uid] = {
+                "name": "Guest",
+                "email": "guest@local",
+                "picture": "/web/logo.png",
             }
-        }
-    # guest mode
-    guest = get_session_user(request)
+        if uid not in CHATS:
+            CHATS[uid] = []
+        if uid not in USER_BG:
+            USER_BG[uid] = "none"
+        if uid not in PROJECTS:
+            PROJECTS[uid] = [
+                {"id": str(uuid.uuid4()), "name": "Math Study"},
+                {"id": str(uuid.uuid4()), "name": "Bio Unit 3"},
+                {"id": str(uuid.uuid4()), "name": "History DBQ Draft"},
+            ]
+
+    # pick chat
+    if req.chat_id:
+        # find existing
+        chat_obj = None
+        for c in CHATS[uid]:
+            if c["id"] == req.chat_id:
+                chat_obj = c
+                break
+        if chat_obj is None:
+            # create new if not found
+            chat_obj = {
+                "id": req.chat_id,
+                "title": "New chat",
+                "created_at": friendly_timestamp(),
+                "messages": [],
+            }
+            CHATS[uid].insert(0, chat_obj)
+    else:
+        chat_obj = pick_or_create_chat(uid)
+
+    # store user message
+    user_msg = {
+        "role": "user",
+        "text": req.message,
+        "ts": friendly_timestamp(),
+    }
+    chat_obj["messages"].append(user_msg)
+
+    # call model
+    ai_text = await call_openai(req.message, req.image_b64)
+
+    # store assistant message
+    asst_msg = {
+        "role": "assistant",
+        "text": ai_text,
+        "ts": friendly_timestamp(),
+    }
+    chat_obj["messages"].append(asst_msg)
+
+    # update chat title if still default
+    if chat_obj["title"] == "New chat":
+        chat_obj["title"] = summarize_title(chat_obj["messages"])
+
     return {
-        "logged_in": False,
-        "user": {
-            "id": guest["email"],
-            "name": guest["name"],
-            "email": guest["email"],
-            "picture": guest.get("picture",""),
-        }
+        "chat_id": chat_obj["id"],
+        "assistant": ai_text,
+        "ts": asst_msg["ts"],
+        "guest_mode": guest_mode,
     }
 
-@app.post("/manual-login")
-async def manual_login(
+
+@app.get("/chats")
+async def list_chats(request: Request):
+    uid = get_user_id_from_cookie(request)
+    if not uid:
+        uid = "GUEST"
+    arr = []
+    for c in CHATS.get(uid, []):
+        arr.append({
+            "id": c["id"],
+            "title": c["title"],
+            "created_at": c["created_at"]
+        })
+    return arr
+
+
+@app.get("/chat/{chat_id}")
+async def get_chat(chat_id: str, request: Request):
+    uid = get_user_id_from_cookie(request)
+    if not uid:
+        uid = "GUEST"
+
+    for c in CHATS.get(uid, []):
+        if c["id"] == chat_id:
+            return {
+                "id": c["id"],
+                "title": c["title"],
+                "messages": c["messages"],
+            }
+    raise HTTPException(status_code=404, detail="chat not found")
+
+
+@app.delete("/chat/{chat_id}")
+async def delete_chat(chat_id: str, request: Request):
+    uid = require_user(request)
+    CHATS[uid] = [c for c in CHATS.get(uid, []) if c["id"] != chat_id]
+    return {"ok": True}
+
+
+class NewProjectReq(BaseModel):
+    name: str
+
+
+@app.post("/projects")
+async def create_project(req: NewProjectReq, request: Request):
+    uid = get_user_id_from_cookie(request)
+    if not uid:
+        uid = "GUEST"
+    if uid not in PROJECTS:
+        PROJECTS[uid] = []
+    proj_id = str(uuid.uuid4())
+    PROJECTS[uid].insert(0, {"id": proj_id, "name": req.name or "Untitled"})
+    return {"id": proj_id, "name": req.name}
+
+
+@app.get("/projects")
+async def list_projects(request: Request):
+    uid = get_user_id_from_cookie(request)
+    if not uid:
+        uid = "GUEST"
+    return PROJECTS.get(uid, [])
+
+
+class BGReq(BaseModel):
+  background_url: str
+
+
+@app.post("/set-background")
+async def set_background(req: BGReq, request: Request):
+    uid = get_user_id_from_cookie(request)
+    if not uid:
+        uid = "GUEST"
+    USER_BG[uid] = req.background_url
+    return {"ok": True}
+
+
+@app.get("/background")
+async def get_background(request: Request):
+    uid = get_user_id_from_cookie(request)
+    if not uid:
+        uid = "GUEST"
+    return {"background_url": USER_BG.get(uid, "none")}
+
+
+@app.post("/auth/manual")
+async def manual_auth(
     request: Request,
     name: str = Form(...),
     email: str = Form(...),
-    password: str = Form(None)
+    password: str = Form(...),
 ):
-    # no password check yet, acts as "sign up / sign in"
-    upsert_user(email, name, "")
-    set_session_user(request, email=email, name=name, picture="")
-    return {"ok": True}
+    # password not actually validated in this toy version
+    user_id = new_user(email=email, name=name, picture="/web/logo.png")
+    sess_id = create_session(user_id)
+
+    resp = RedirectResponse(url="/", status_code=302)
+    # cookie so browser stays signed in
+    resp.set_cookie("session_id", sess_id, httponly=True, samesite="lax")
+    return resp
+
 
 @app.get("/logout")
-def logout(request: Request):
-    request.session.clear()
-    return RedirectResponse(url="/")
+async def do_logout(request: Request):
+    sess_id = request.cookies.get("session_id")
+    if sess_id in SESSIONS:
+        del SESSIONS[sess_id]
+    resp = RedirectResponse(url="/", status_code=302)
+    resp.delete_cookie("session_id")
+    return resp
 
-@app.get("/google-login")
-async def google_login(request: Request):
-    # If Google creds aren't set, don't 500, just tell frontend
-    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        return JSONResponse(
-            {"error": "google_not_configured"},
-            status_code=500
-        )
-    return await oauth.google.authorize_redirect(request, GOOGLE_REDIRECT_URI)
 
-@app.get("/google-callback")
-async def google_callback(request: Request):
-    # same guard
-    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        return RedirectResponse(url="/")
-
-    token = await oauth.google.authorize_access_token(request)
-    userinfo = await oauth.google.get("userinfo", token=token)
-    profile = userinfo.json()
-
-    email   = profile.get("email")
-    name    = profile.get("name","User")
-    picture = profile.get("picture","")
-
-    upsert_user(email, name, picture)
-    set_session_user(request, email=email, name=name, picture=picture)
-
-    return RedirectResponse(url="/")
-
-# -------------------------------------------------
-# ROUTES: CHATS / MESSAGES
-# -------------------------------------------------
-
-@app.get("/chats")
-def list_chats(request: Request):
-    user = get_session_user(request)
-    user_email = user["email"]
-    return {"chats": get_chats_for_user(user_email)}
-
-@app.post("/chats/new")
-def new_chat(request: Request):
-    user = get_session_user(request)
-    user_email = user["email"]
-    chat_id = create_chat(user_email, "New chat")
-    return {"chat_id": chat_id}
-
-@app.post("/chats/delete")
-async def chats_delete(request: Request):
-    user = get_session_user(request)
-    user_email = user["email"]
-    body = await request.json()
-    chat_id = body.get("chat_id")
-    if not chat_id:
-        return {"ok": False, "error": "chat_id required"}
-    ok = delete_chat_row(int(chat_id), user_email)
-    return {"ok": ok}
-
-@app.get("/messages")
-def get_chat_messages(request: Request, chat_id: int):
-    user = get_session_user(request)
-    user_email = user["email"]
-    msgs = get_messages(chat_id, user_email)
-    return {"messages": msgs}
-
-@app.post("/chat")
-async def chat_endpoint(
-    request: Request,
-    chat_id: str = Form(None),
-    message: str = Form(None),
-    image: UploadFile = File(None),
-):
-    """
-    Handles both:
-      - multipart/form-data with (chat_id?, message?, image?)
-      - pure JSON {chat_id, message}
-    We'll normalize so we always have final_chat_id and final_msg.
-    Then we'll add to DB, call model, generate title (if first message),
-    save assistant reply, return {response, chat_id, chat_title}.
-    """
-    user = get_session_user(request)
-    user_email = user["email"]
-
-    # if it's JSON, not multipart
-    if "multipart/form-data" not in request.headers.get("content-type",""):
-        data = await request.json()
-        chat_id = data.get("chat_id")
-        message = data.get("message","").strip()
-        image = None
-
-    # ensure chat exists
-    if not chat_id:
-        # create new chat with placeholder title
-        new_id = create_chat(user_email, "New chat")
-        chat_id = new_id
-
-    # basic ownership check
-    owner = get_chat_owner_email(int(chat_id))
-    if owner != user_email:
-        return JSONResponse({"error": "forbidden"}, status_code=403)
-
-    # save user's text
-    txt = (message or "").strip()
-    if txt:
-        add_message(int(chat_id), "user", txt, "text")
-
-    img_url = None
-    if image:
-        # store uploaded image file
-        ext = image.filename.split(".")[-1].lower() if "." in image.filename else "bin"
-        fname = f"{uuid.uuid4().hex}.{ext}"
-        save_path = os.path.join(UPLOADS_DIR, fname)
-        with open(save_path, "wb") as buf:
-            shutil.copyfileobj(image.file, buf)
-        img_url = f"/uploads/{fname}"
-        # record message of type "image"
-        add_message(int(chat_id), "user", img_url, "image")
-
-    # build full conversation for model
-    # (simple: just dump all messages as text; images will be described by URL)
-    history = get_messages(int(chat_id), user_email)
-    openai_msgs = []
-    for m in history:
-        if m["msg_type"] == "image":
-            # We'll just tell the model the user sent an image at URL.
-            openai_msgs.append({
-                "role": "user",
-                "content": f"[User sent an image: {m['content']}]"
-            })
-        else:
-            openai_msgs.append({
-                "role": m["role"],
-                "content": m["content"]
-            })
-
-    # call model
-    ai_text = call_model(openai_msgs)
-
-    if not ai_text:
-        ai_text = "Sorry, I couldn't generate a response."
-
-    # save assistant message
-    add_message(int(chat_id), "assistant", ai_text, "text")
-
-    # auto title logic:
-    # if chat still has default-y title, try summarizing the FIRST user text msg as chat title
-    conn = db_conn()
-    c = conn.cursor()
-    c.execute("SELECT title FROM chats WHERE id=?", (chat_id,))
-    row = c.fetchone()
-    current_title = row[0] if row else "New chat"
-
-    if not current_title or current_title == "New chat":
-        # grab first user message in this chat
-        c.execute("""
-          SELECT content FROM messages
-          WHERE chat_id=? AND role='user' AND msg_type='text'
-          ORDER BY id ASC LIMIT 1
-        """, (chat_id,))
-        first_user_row = c.fetchone()
-        if first_user_row:
-            new_title = generate_title_from_first_user_msg(first_user_row[0])
-            set_chat_title(int(chat_id), user_email, new_title)
-            current_title = new_title
-
-    conn.close()
-
-    return {
-        "chat_id": int(chat_id),
-        "response": ai_text,
-        "chat_title": current_title
-    }
-
-# -------------------------------------------------
-# ROUTES: BACKGROUND
-# -------------------------------------------------
-
-@app.get("/get-background")
-def get_bg(request: Request):
-    user = get_session_user(request)
-    bg = get_background(user["email"])
-    return {"bg_url": bg or ""}
-
-@app.post("/set-background")
-async def set_bg(request: Request):
-    user = get_session_user(request)
-    data = await request.json()
-    bg_url = data.get("bg_url","")
-    set_background(user["email"], bg_url)
-    return {"ok": True, "bg_url": bg_url}
-
-@app.post("/upload-background")
-async def upload_bg(request: Request, file: UploadFile = File(...)):
-    user = get_session_user(request)
-    ext = file.filename.split(".")[-1].lower() if "." in file.filename else "bin"
-    fname = f"bg-{uuid.uuid4().hex}.{ext}"
-    save_path = os.path.join(UPLOADS_DIR, fname)
-    with open(save_path, "wb") as buf:
-        shutil.copyfileobj(file.file, buf)
-    url = f"/uploads/{fname}"
-    set_background(user["email"], url)
-    return {"bg_url": url}
-
-# -------------------------------------------------
-# ROUTES: PROJECTS
-# -------------------------------------------------
-
-@app.get("/projects")
-def list_projects(request: Request):
-    user = get_session_user(request)
-    projects = get_projects_for_user(user["email"])
-    return {"projects": projects}
-
-@app.post("/projects/new")
-async def new_project(request: Request):
-    user = get_session_user(request)
-    body = await request.json()
-    title = body.get("title","New project").strip() or "New project"
-    pid = create_project(user["email"], title)
-    return {"id": pid, "title": title, "created_at": now_iso()}
-
-@app.post("/projects/rename")
-async def rename_project_route(request: Request):
-    user = get_session_user(request)
-    body = await request.json()
-    pid = body.get("project_id")
-    new_title = body.get("title","").strip()
-    if not pid or not new_title:
-        return {"ok": False, "error": "project_id and title required"}
-    ok = rename_project(user["email"], int(pid), new_title)
-    return {"ok": ok}
-
-@app.post("/projects/delete")
-async def delete_project_route(request: Request):
-    user = get_session_user(request)
-    body = await request.json()
-    pid = body.get("project_id")
-    if not pid:
-        return {"ok": False, "error": "project_id required"}
-    ok = delete_project_row(user["email"], int(pid))
-    return {"ok": ok}
-
-# -------------------------------------------------
-# ROUTES: HELP / POLICY
-# -------------------------------------------------
-
+# basic help/policy for the modal
 @app.get("/help")
-def help_info():
+async def help_page():
     return {
-        "title": "Responsible Use & Academic Integrity",
-        "for": "Poway Unified School District",
-        "rules": [
-            "This assistant is for learning support, explanations, brainstorming, and study guidance.",
-            "Do not submit AI-generated answers as graded work unless your teacher says it’s allowed.",
-            "Do not use this to harass others, cheat on tests, or get around school filters.",
-            "All use may be logged to protect safety and academic integrity.",
-            "This tool is categorized as Educational/Tutoring."
-        ]
+        "title": "Responsible Use Policy",
+        "body": [
+            "PranayAI is here to explain, tutor, and help you study.",
+            "Do not turn in AI-generated text as your own graded work unless your teacher gave permission.",
+            "No harassment, hate, self-harm, or illegal content.",
+            "This service is categorized as Educational/Study Support — not gaming, not adult, not unknown.",
+        ],
+        "district_note": "Built for students to learn how and why, not just copy answers.",
     }
