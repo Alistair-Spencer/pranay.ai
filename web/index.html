@@ -3,43 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>PranayAI</title>
-
-  <!-- favicon / helps school filter categorize you as an educational tool -->
   <link rel="icon" href="/logo.png" type="image/png" />
-  <meta name="description" content="PranayAI is an educational study assistant for Poway Unified students. Get explanations, study help, brainstorming, and research support." />
-  <meta name="keywords" content="education, tutoring, homework help, Poway Unified, research, study skills, explanations, academic support" />
-  <meta name="category" content="Education" />
-  <meta name="rating" content="safe for kids" />
-  <meta name="robots" content="index,follow" />
-
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
-
   <style>
     :root {
-      --bg-main: #121212;
+      --bg-dark: #121212;
       --bg-panel: #1f1f1f;
-      --bg-card: #2a2a2a;
-      --bg-card-hover: #383838;
-      --border-color: #2a2a2a;
-      --text-dim: #888;
-      --text-main: #e6e6e6;
+      --bg-hover: #2a2a2a;
       --accent: #3b82f6;
-      --accent-hover: #2563eb;
+      --text-light: #e6e6e6;
+      --text-muted: #888;
     }
 
     body {
-      font-family: 'Inter', sans-serif;
-      background-color: var(--bg-main);
-      color: var(--text-main);
       margin: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-light);
       display: flex;
       height: 100vh;
       overflow: hidden;
     }
 
-    /* SIDEBAR */
+    /* Sidebar */
     .sidebar {
       width: 260px;
       background-color: var(--bg-panel);
@@ -47,374 +34,213 @@
       flex-direction: column;
       padding: 16px;
       box-sizing: border-box;
-      border-right: 1px solid var(--border-color);
+      border-right: 1px solid var(--bg-hover);
     }
-
     .logo {
       display: flex;
       align-items: center;
-      margin-bottom: 16px;
+      justify-content: center;
+      margin-bottom: 20px;
     }
     .logo img {
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
-      margin-right: 10px;
-      object-fit: cover;
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      object-fit: contain;
     }
-    .logo strong {
-      font-size: 15px;
-      font-weight: 600;
-      color: #fff;
-    }
-
     .user-info {
+      margin-bottom: 16px;
       display: flex;
       align-items: center;
-      margin-bottom: 16px;
-      border-bottom: 1px solid #333;
-      padding-bottom: 12px;
-      min-height: 44px;
+      border-bottom: 1px solid var(--bg-hover);
+      padding-bottom: 10px;
+      font-size: 14px;
     }
-    .user-avatar {
+    .user-info img {
       width: 36px;
       height: 36px;
       border-radius: 50%;
-      background: #444;
-      color: #fff;
-      font-size: 13px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-right: 8px;
-      flex-shrink: 0;
-      overflow: hidden;
+      margin-right: 10px;
     }
-    .user-name-line {
-      font-size: 14px;
-      font-weight: 600;
-      line-height: 1.2;
-      color: #fff;
-    }
-    .user-email-line {
-      font-size: 12px;
-      color: var(--text-dim);
-      line-height: 1.2;
-      word-break: break-all;
-    }
-
-    .new-chat {
-      background: var(--accent);
-      color: white;
-      padding: 10px;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      cursor: pointer;
-      transition: background 0.15s;
-      margin-bottom: 16px;
-    }
-    .new-chat:hover {
-      background: var(--accent-hover);
-    }
-
     .chat-section {
       flex-grow: 1;
       overflow-y: auto;
-      min-height: 0;
     }
-    .chat-heading {
-      margin-top: 0;
+    .chat-section h3 {
       font-size: 13px;
-      color: var(--text-dim);
       text-transform: uppercase;
-      letter-spacing: .03em;
-      margin-bottom: 8px;
+      color: var(--text-muted);
+      margin: 12px 0 8px;
     }
-
-    .chat-list {
-      margin-bottom: 20px;
-    }
-
     .chat-item {
-      background: var(--bg-card);
-      padding: 10px;
+      background: var(--bg-hover);
       border-radius: 8px;
+      padding: 10px;
       margin-bottom: 6px;
-      cursor: pointer;
-      transition: background 0.15s;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      cursor: pointer;
+      transition: background 0.2s;
     }
-    .chat-item.active {
-      outline: 1px solid var(--accent);
-    }
-    .chat-item:hover {
-      background: var(--bg-card-hover);
-    }
-    .chat-left {
-      display: flex;
-      flex-direction: column;
-      font-size: 13px;
-      line-height: 1.3;
-      max-width: 200px;
-    }
-    .chat-title {
-      color: #fff;
-      font-weight: 500;
-      max-width: 180px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .chat-time {
-      font-size: 11px;
-      color: var(--text-dim);
-    }
-    .chat-delete-btn {
+    .chat-item:hover { background: #333; }
+    .chat-item button {
       background: none;
       border: none;
-      color: #999;
+      color: var(--text-muted);
       cursor: pointer;
-      font-size: 14px;
-      padding: 4px 6px;
     }
-    .chat-delete-btn:hover {
-      color: #fff;
+    .new-chat {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background 0.2s;
     }
+    .new-chat:hover { background: #2563eb; }
 
-    .project-list {
-      font-size: 13px;
-      color: var(--text-dim);
-      border-top: 1px solid #333;
-      padding-top: 12px;
-    }
-    .project-row {
-      background: transparent;
-      color: #aaa;
-      padding: 8px 0;
-      border-radius: 6px;
-      font-size: 13px;
-      line-height: 1.4;
-      user-select: none;
-    }
-
-    /* MAIN AREA */
+    /* Main */
     .main {
       flex-grow: 1;
       display: flex;
       flex-direction: column;
-      background-color: var(--bg-main);
+      background-color: var(--bg-dark);
       background-size: cover;
       background-position: center;
       position: relative;
-      min-width: 0;
     }
-
-    /* top right menu */
-    .menu-wrapper {
-      position: absolute;
-      top: 10px;
-      right: 20px;
-      z-index: 20;
-    }
-    .menu-button {
-      background: none;
-      border: none;
-      color: #fff;
-      font-size: 20px;
-      line-height: 1;
-      cursor: pointer;
-      padding: 6px 8px;
-      border-radius: 6px;
-    }
-    .menu-button:hover {
-      background: rgba(255,255,255,0.07);
-    }
-
-    .dropdown {
-      position: absolute;
-      right: 0;
-      top: 32px;
-      background: var(--bg-panel);
-      border: 1px solid #333;
-      border-radius: 8px;
-      overflow: hidden;
-      width: 180px;
-      display: none;
-      z-index: 50;
-    }
-    .dropdown-btn {
-      width: 100%;
-      padding: 10px 12px;
-      background: none;
-      border: none;
-      color: var(--text-main);
-      text-align: left;
-      cursor: pointer;
-      transition: background 0.15s;
-      font-size: 14px;
-    }
-    .dropdown-btn:hover {
-      background: var(--bg-card);
-    }
-
-    /* chat stream */
     .chat-display {
       flex-grow: 1;
-      padding: 80px 20px 20px;
-      box-sizing: border-box;
+      padding: 20px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 10px;
-      min-height: 0;
     }
-
     .message {
       max-width: 70%;
       padding: 12px;
-      border-radius: 8px;
+      border-radius: 10px;
       line-height: 1.5;
-      font-size: 15px;
       word-wrap: break-word;
-      white-space: pre-wrap;
+      position: relative;
     }
     .user-msg {
       background: var(--accent);
-      color: #fff;
+      color: white;
       align-self: flex-end;
     }
     .ai-msg {
-      background: var(--bg-card);
-      color: var(--text-main);
-      align-self: flex-start;
-    }
-
-    .img-msg img {
-      max-width: 200px;
-      border-radius: 6px;
-      display: block;
-    }
-
-    /* input row */
-    .input-bar {
-      padding: 16px;
-      display: flex;
-      align-items: flex-end;
-      background-color: var(--bg-panel);
-      border-top: 1px solid var(--border-color);
-      gap: 10px;
-    }
-
-    .plus-wrap {
-      position: relative;
-    }
-    .plus-btn {
-      background: none;
-      border: 1px solid #444;
-      color: #fff;
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      line-height: 0;
-      padding: 0;
-    }
-    .plus-btn:hover {
-      background: rgba(255,255,255,0.07);
-    }
-
-    .plus-menu {
-      position: absolute;
-      bottom: 46px;
-      left: 0;
       background: var(--bg-panel);
-      border: 1px solid #333;
-      border-radius: 8px;
-      width: 160px;
-      overflow: hidden;
-      display: none;
-      z-index: 100;
+      align-self: flex-start;
+      color: var(--text-light);
     }
-    .plus-menu-btn {
-      width: 100%;
+    .msg-tools {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .msg-tools button {
       background: none;
       border: none;
-      text-align: left;
-      color: var(--text-main);
-      font-size: 14px;
-      padding: 10px 12px;
+      color: var(--text-muted);
       cursor: pointer;
-      transition: background 0.15s;
     }
-    .plus-menu-btn:hover {
-      background: var(--bg-card);
+    .typing {
+      align-self: flex-start;
+      color: var(--text-muted);
     }
 
+    /* Input */
+    .chat-input-area {
+      display: flex;
+      align-items: center;
+      background: var(--bg-panel);
+      padding: 14px;
+      border-top: 1px solid var(--bg-hover);
+    }
     .chat-input {
       flex-grow: 1;
       border: none;
-      border-radius: 8px;
-      padding: 12px;
-      background: var(--bg-card);
+      background: var(--bg-hover);
       color: white;
+      padding: 12px;
+      border-radius: 8px;
       font-size: 15px;
       outline: none;
-      line-height: 1.4;
     }
-
     .send-btn {
       background: var(--accent);
-      color: white;
       border: none;
-      padding: 10px 14px;
+      color: white;
       border-radius: 8px;
+      padding: 10px 14px;
+      margin-left: 10px;
       cursor: pointer;
-      line-height: 1;
-      font-size: 15px;
-      transition: background 0.15s;
+      font-size: 18px;
+      transition: background 0.2s;
     }
-    .send-btn:hover {
-      background: var(--accent-hover);
-    }
+    .send-btn:hover { background: #2563eb; }
 
-    /* login modal */
+    /* Menu */
+    .menu {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+    }
+    .menu button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 22px;
+      cursor: pointer;
+    }
+    .dropdown {
+      display: none;
+      position: absolute;
+      top: 32px;
+      right: 0;
+      background: var(--bg-panel);
+      border: 1px solid var(--bg-hover);
+      border-radius: 8px;
+      width: 160px;
+      overflow: hidden;
+    }
+    .dropdown button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      border: none;
+      background: none;
+      color: var(--text-light);
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .dropdown button:hover { background: var(--bg-hover); }
+
+    /* Login modal */
     .login-modal {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.8);
-      display: none;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
       justify-content: center;
       align-items: center;
-      z-index: 9999;
     }
     .login-box {
       background: var(--bg-panel);
-      padding: 24px;
       border-radius: 10px;
-      width: 320px;
+      padding: 30px;
+      width: 300px;
       text-align: center;
-      box-shadow: 0 30px 80px rgba(0,0,0,0.8);
-      border: 1px solid #333;
-    }
-    .login-box h2 {
-      margin: 0 0 16px;
-      font-size: 16px;
-      font-weight: 600;
-      color: #fff;
-    }
-    .login-box .subcopy {
-      font-size: 12px;
-      line-height: 1.4;
-      color: var(--text-dim);
-      margin-bottom: 16px;
     }
     .login-box input {
       width: 100%;
@@ -422,562 +248,183 @@
       padding: 10px;
       border: none;
       border-radius: 6px;
-      background: var(--bg-card);
+      background: var(--bg-hover);
       color: white;
-      font-size: 14px;
-      outline: none;
     }
-    .login-btn-main {
+    .login-box button {
       width: 100%;
       padding: 10px;
       border: none;
+      border-radius: 6px;
       background: var(--accent);
       color: white;
-      border-radius: 6px;
       cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 12px;
-    }
-    .login-btn-main:hover {
-      background: var(--accent-hover);
-    }
-    .or-line {
-      font-size: 12px;
-      color: var(--text-dim);
-      margin: 8px 0 12px;
-    }
-    .google-btn {
-      width: 100%;
-      padding: 10px;
-      border: none;
-      background: #fff;
-      color: #000;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    .google-btn img {
-      width: 18px;
-      height: 18px;
-      border-radius: 2px;
-    }
-
-    /* hidden real inputs */
-    .file-input-hidden {
-      display: none;
     }
   </style>
 </head>
+
 <body>
+  <div class="sidebar">
+    <div class="logo"><img src="/logo.png" alt="PranayAI logo"></div>
+    <div class="user-info" id="user-info"></div>
 
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="logo">
-      <img src="/logo.png" alt="PranayAI logo">
-      <strong>PranayAI</strong>
-    </div>
-
-    <div class="user-info" id="user-info">
-      <!-- Filled at runtime -->
-    </div>
-
-    <button class="new-chat" id="new-chat-btn">+ New chat</button>
+    <button class="new-chat" id="new-chat">+ New Chat</button>
 
     <div class="chat-section">
-      <h3 class="chat-heading">Chats</h3>
-      <div id="chat-list" class="chat-list"></div>
+      <h3>Chats</h3>
+      <div id="chat-list"></div>
 
-      <h3 class="chat-heading">Projects</h3>
-      <div id="project-list" class="project-list">
-        <div class="project-row">Math Study</div>
-        <div class="project-row">Bio Unit 3</div>
-        <div class="project-row">History DBQ Draft</div>
-      </div>
+      <h3>Projects</h3>
+      <div id="project-list"></div>
     </div>
-  </aside>
+  </div>
 
-  <!-- MAIN -->
-  <main class="main" id="main-area">
-    <!-- top right menu -->
-    <div class="menu-wrapper">
-      <button class="menu-button" id="menu-btn">⋮</button>
-      <div class="dropdown" id="dropdown-menu">
-        <button class="dropdown-btn" id="bg-btn">Change Background</button>
-        <button class="dropdown-btn" id="help-btn">Help / Policy</button>
-        <button class="dropdown-btn" id="logout-btn">Sign Out</button>
+  <div class="main" id="main">
+    <div class="menu">
+      <button id="menu-btn">⋮</button>
+      <div class="dropdown" id="dropdown">
+        <button id="background-btn">Change Background</button>
+        <button id="help-btn">Help</button>
+        <button id="logout-btn">Sign Out</button>
       </div>
     </div>
 
-    <!-- messages -->
-    <div class="chat-display" id="chat-display">
-      <!-- messages injected here -->
+    <div class="chat-display" id="chat-display"></div>
+
+    <div class="chat-input-area">
+      <input id="chat-input" class="chat-input" placeholder="Message PranayAI..." />
+      <input type="file" id="image-upload" style="display:none" accept="image/*" />
+      <button id="send-btn" class="send-btn">➤</button>
     </div>
+  </div>
 
-    <!-- input row -->
-    <div class="input-bar">
-      <div class="plus-wrap">
-        <button class="plus-btn" id="plus-btn">+</button>
-        <div class="plus-menu" id="plus-menu">
-          <button class="plus-menu-btn" id="upload-img-btn">Upload image…</button>
-        </div>
-      </div>
-
-      <input type="text" id="chat-input" class="chat-input" placeholder="Message PranayAI..." />
-      <button id="send-btn" class="send-btn">Send</button>
-
-      <!-- hidden file input for images -->
-      <input type="file" id="img-file-input" class="file-input-hidden" accept="image/*" />
-    </div>
-  </main>
-
-  <!-- LOGIN MODAL -->
   <div class="login-modal" id="login-modal">
     <div class="login-box">
-      <h2>Sign in to continue</h2>
-      <div class="subcopy">
-        PranayAI is for learning support and study help.  
-        Do not submit AI output as graded work without teacher approval.
-      </div>
-
+      <h2>Sign In</h2>
       <input type="text" id="name-input" placeholder="First name" />
       <input type="email" id="email-input" placeholder="Email" />
-      <button class="login-btn-main" id="manual-login-btn">Sign in</button>
-
-      <div class="or-line">or</div>
-
-      <button class="google-btn" id="google-login-btn">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
-        <span>Continue with Google</span>
-      </button>
+      <button id="login-btn">Sign In</button>
+      <p>or</p>
+      <button onclick="googleLogin()">Continue with Google</button>
     </div>
   </div>
 
   <script>
-    // -----------------------
-    // STATE
-    // -----------------------
-    let currentUser = null; // {email, name, picture}
-    let activeChatId = null; // number
-    let backgroundURL = "";
-    let pendingImageFile = null; // File object
-    let pendingImagePreviewURL = null; // blob:... url
+    const chatDisplay = document.getElementById("chat-display");
+    const chatInput = document.getElementById("chat-input");
+    const sendBtn = document.getElementById("send-btn");
+    const userInfo = document.getElementById("user-info");
+    const loginModal = document.getElementById("login-modal");
+    const dropdown = document.getElementById("dropdown");
+    const menuBtn = document.getElementById("menu-btn");
+    const imageUpload = document.getElementById("image-upload");
+    const main = document.getElementById("main");
 
-    // dom refs
-    const loginModal     = document.getElementById("login-modal");
-    const manualLoginBtn = document.getElementById("manual-login-btn");
-    const googleLoginBtn = document.getElementById("google-login-btn");
-    const nameInput      = document.getElementById("name-input");
-    const emailInput     = document.getElementById("email-input");
+    let selectedImage = null;
 
-    const userInfoBox    = document.getElementById("user-info");
-    const mainArea       = document.getElementById("main-area");
+    // Dropdown menu
+    menuBtn.addEventListener("click", () => {
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    });
 
-    const chatListEl     = document.getElementById("chat-list");
-    const chatDisplayEl  = document.getElementById("chat-display");
-    const chatInputEl    = document.getElementById("chat-input");
-    const sendBtn        = document.getElementById("send-btn");
-
-    const newChatBtn     = document.getElementById("new-chat-btn");
-
-    const menuBtn        = document.getElementById("menu-btn");
-    const dropdownMenu   = document.getElementById("dropdown-menu");
-    const bgBtn          = document.getElementById("bg-btn");
-    const helpBtn        = document.getElementById("help-btn");
-    const logoutBtn      = document.getElementById("logout-btn");
-
-    const plusBtn        = document.getElementById("plus-btn");
-    const plusMenu       = document.getElementById("plus-menu");
-    const uploadImgBtn   = document.getElementById("upload-img-btn");
-    const imgFileInput   = document.getElementById("img-file-input");
-
-    // -----------------------
-    // UTIL
-    // -----------------------
-
-    function fmtTime(ts) {
-      // ts like "2025-10-26T..." -> just show date/time short
-      try {
-        const d = new Date(ts);
-        return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-      } catch {
-        return "";
+    // Background selector
+    document.getElementById("background-btn").addEventListener("click", async () => {
+      const presets = [
+        "/background1.jpeg",
+        "/background2.jpeg",
+        "/background3.jpeg"
+      ];
+      let choice = prompt("Type 1, 2, or 3 for preset background, or 'custom' to upload your own:");
+      if (choice === "custom") {
+        const url = prompt("Enter custom background image URL:");
+        if (url) main.style.backgroundImage = `url('${url}')`;
+      } else if (["1","2","3"].includes(choice)) {
+        main.style.backgroundImage = `url('${presets[choice-1]}')`;
       }
-    }
+    });
 
-    function renderUserBox() {
-      if (!currentUser) {
-        userInfoBox.innerHTML = "";
-        return;
-      }
+    // Help button
+    document.getElementById("help-btn").addEventListener("click", () => {
+      alert("PranayAI is your personal study and productivity assistant.\nStay respectful and use it for learning only!");
+    });
 
-      const firstName = currentUser.name?.split(" ")[0] || "You";
-      const pic = currentUser.picture && currentUser.picture.trim() !== "" ? currentUser.picture : null;
-      const initials = firstName.slice(0,2).toUpperCase();
+    // Logout
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      localStorage.removeItem("user");
+      window.location.reload();
+    });
 
-      userInfoBox.innerHTML = `
-        <div class="user-avatar">
-          ${pic ? `<img src="${pic}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">` : initials}
-        </div>
-        <div style="display:flex;flex-direction:column;">
-          <div class="user-name-line">${firstName}</div>
-          <div class="user-email-line">${currentUser.email || ""}</div>
-        </div>
-      `;
-    }
-
-    function renderChatList(list) {
-      chatListEl.innerHTML = "";
-      list.forEach(chat => {
-        const wrapper = document.createElement("div");
-        wrapper.className = "chat-item" + (chat.id === activeChatId ? " active" : "");
-        wrapper.dataset.id = chat.id;
-
-        const left = document.createElement("div");
-        left.className = "chat-left";
-        const title = document.createElement("div");
-        title.className = "chat-title";
-        title.textContent = chat.title || "Untitled chat";
-
-        const time = document.createElement("div");
-        time.className = "chat-time";
-        time.textContent = fmtTime(chat.timestamp);
-
-        left.appendChild(title);
-        left.appendChild(time);
-
-        const delBtn = document.createElement("button");
-        delBtn.className = "chat-delete-btn";
-        delBtn.textContent = "🗑";
-        delBtn.addEventListener("click", async (e) => {
-          e.stopPropagation();
-          await deleteChat(chat.id);
-          await refreshChatList();
-          // if we deleted the active chat, clear messages
-          if (chat.id === activeChatId) {
-            activeChatId = null;
-            chatDisplayEl.innerHTML = "";
-          }
-        });
-
-        wrapper.appendChild(left);
-        wrapper.appendChild(delBtn);
-
-        wrapper.addEventListener("click", async () => {
-          activeChatId = chat.id;
-          renderChatList(list); // rehighlight
-          await loadChatMessages(chat.id);
-        });
-
-        chatListEl.appendChild(wrapper);
-      });
-    }
-
-    function appendUserMessageBubble(text) {
-      const div = document.createElement("div");
-      div.className = "message user-msg";
-      div.textContent = text;
-      chatDisplayEl.appendChild(div);
-      chatDisplayEl.scrollTop = chatDisplayEl.scrollHeight;
-    }
-
-    function appendAIBubble(text) {
-      const div = document.createElement("div");
-      div.className = "message ai-msg";
-      div.textContent = text;
-      chatDisplayEl.appendChild(div);
-      chatDisplayEl.scrollTop = chatDisplayEl.scrollHeight;
-    }
-
-    function appendUserImageBubble(previewURL) {
-      const wrap = document.createElement("div");
-      wrap.className = "message user-msg img-msg";
-      const img = document.createElement("img");
-      img.src = previewURL;
-      wrap.appendChild(img);
-      chatDisplayEl.appendChild(wrap);
-      chatDisplayEl.scrollTop = chatDisplayEl.scrollHeight;
-    }
-
-    function renderChatMessages(msgs) {
-      chatDisplayEl.innerHTML = "";
-      msgs.forEach(m => {
-        if (m.msg_type === "image") {
-          // For future: vision messages. Right now we didn't store them that way yet
-          appendAIBubble("[image message support placeholder]");
-          return;
-        }
-        if (m.role === "user") {
-          appendUserMessageBubble(m.content);
-        } else {
-          appendAIBubble(m.content);
-        }
-      });
-    }
-
-    // -----------------------
-    // BACKEND CALLS
-    // -----------------------
-
-    async function fetchJSON(url, opts={}) {
-      const res = await fetch(url, opts);
-      return res.json();
-    }
-
-    async function initSession() {
-      // 1. who am I
-      const me = await fetchJSON("/me");
-      if (!me.logged_in) {
-        // show modal
-        loginModal.style.display = "flex";
-        return;
-      }
-      currentUser = me.user;
-      renderUserBox();
-
-      loginModal.style.display = "none";
-
-      // 2. background
-      const bgRes = await fetchJSON("/get-background");
-      backgroundURL = bgRes.bg_url || "";
-      if (backgroundURL) {
-        mainArea.style.backgroundImage = `url('${backgroundURL}')`;
-      }
-
-      // 3. chats
-      await refreshChatList();
-    }
-
-    async function manualLogin() {
-      const nameVal = nameInput.value.trim();
-      const emailVal = emailInput.value.trim();
-      if (!nameVal || !emailVal) return;
-
-      const formData = new FormData();
-      formData.append("name", nameVal);
-      formData.append("email", emailVal);
-
-      const res = await fetch("/manual-login", {
-        method: "POST",
-        body: formData
-      });
-      const data = await res.json();
-
-      if (data.ok) {
+    // Sign in manually
+    document.getElementById("login-btn").addEventListener("click", () => {
+      const name = document.getElementById("name-input").value.trim();
+      const email = document.getElementById("email-input").value.trim();
+      if (name && email) {
+        localStorage.setItem("user", JSON.stringify({ name, email }));
+        userInfo.innerHTML = `<img src="https://ui-avatars.com/api/?name=${name}"><span>${name}</span>`;
         loginModal.style.display = "none";
-        await initSession();
-      } else {
-        alert("Login failed");
-      }
+      } else alert("Please fill in both fields");
+    });
+
+    // Google login
+    function googleLogin() { window.location.href = "/google-login"; }
+
+    // Load user if stored
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    if (user) {
+      userInfo.innerHTML = `<img src="https://ui-avatars.com/api/?name=${user.name}"><span>${user.name}</span>`;
+      loginModal.style.display = "none";
     }
 
-    async function refreshChatList() {
-      const chatsData = await fetchJSON("/chats");
-      if (chatsData.error === "not logged in") {
-        loginModal.style.display = "flex";
-        return;
+    // Send message
+    sendBtn.addEventListener("click", async () => {
+      const msg = chatInput.value.trim();
+      if (!msg && !selectedImage) return;
+
+      const userDiv = document.createElement("div");
+      userDiv.className = "message user-msg";
+      userDiv.textContent = msg;
+      chatDisplay.appendChild(userDiv);
+
+      if (selectedImage) {
+        const img = document.createElement("img");
+        img.src = selectedImage;
+        img.style.maxWidth = "150px";
+        img.style.borderRadius = "8px";
+        userDiv.appendChild(img);
       }
 
-      renderChatList(chatsData.chats);
+      chatInput.value = "";
+      selectedImage = null;
 
-      // if no activeChatId but we have chats, pick newest
-      if (!activeChatId && chatsData.chats.length > 0) {
-        activeChatId = chatsData.chats[0].id;
-        await loadChatMessages(activeChatId);
-      }
-    }
-
-    async function createNewChat() {
-      const res = await fetchJSON("/chats/new", { method: "POST" });
-      if (res.error === "not logged in") {
-        loginModal.style.display = "flex";
-        return;
-      }
-
-      activeChatId = res.chat_id;
-      await refreshChatList();
-      chatDisplayEl.innerHTML = "";
-      chatInputEl.focus();
-    }
-
-    async function deleteChat(chatId) {
-      await fetch("/chats/delete", {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ chat_id: chatId })
-      });
-    }
-
-    async function loadChatMessages(chatId) {
-      const data = await fetchJSON(`/chats/${chatId}`);
-      if (data.error === "not logged in") {
-        loginModal.style.display = "flex";
-        return;
-      }
-      renderChatMessages(data.messages);
-    }
-
-    async function sendMessage() {
-      const text = chatInputEl.value.trim();
-      if (!text && !pendingImageFile) return; // nothing to send
-
-      // if image was chosen, show preview now
-      if (pendingImagePreviewURL) {
-        appendUserImageBubble(pendingImagePreviewURL);
-      }
-      if (text) {
-        appendUserMessageBubble(text);
-      }
-      chatInputEl.value = "";
-
-      // make sure we have a chat to send into
-      if (!activeChatId) {
-        // create a chat first
-        const tmp = await fetch("/chats/new", { method: "POST" });
-        const newInfo = await tmp.json();
-        activeChatId = newInfo.chat_id;
-        await refreshChatList();
-      }
-
-      // call /chat (text only)
-      // note: we haven't wired /chat-image with GPT-4o vision in this html yet,
-      // so for now we always just send text to /chat.
-      let payload = { chat_id: activeChatId, message: text };
+      const typingDiv = document.createElement("div");
+      typingDiv.className = "typing";
+      typingDiv.textContent = "•••";
+      chatDisplay.appendChild(typingDiv);
+      chatDisplay.scrollTop = chatDisplay.scrollHeight;
 
       const res = await fetch("/chat", {
         method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify(payload)
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: msg })
       });
       const data = await res.json();
+      typingDiv.remove();
 
-      if (data.error === "not logged in") {
-        loginModal.style.display = "flex";
-        return;
-      }
+      const aiDiv = document.createElement("div");
+      aiDiv.className = "message ai-msg";
+      aiDiv.textContent = data.response || "No response";
+      chatDisplay.appendChild(aiDiv);
 
-      const aiReply = data.response || "[no response]";
-      appendAIBubble(aiReply);
+      const tools = document.createElement("div");
+      tools.className = "msg-tools";
+      tools.innerHTML = `
+        <button onclick="navigator.clipboard.writeText('${data.response}')">Copy</button>
+        <button onclick="alert('Edit feature coming soon!')">Edit</button>
+      `;
+      aiDiv.appendChild(tools);
 
-      // clear image after send
-      pendingImageFile = null;
-      pendingImagePreviewURL = null;
-
-      // refresh sidebar because first user message renamed the chat title
-      await refreshChatList();
-    }
-
-    async function pickBackground() {
-      const newBg = prompt("Enter background image URL");
-      if (!newBg) return;
-      mainArea.style.backgroundImage = `url('${newBg}')`;
-
-      await fetch("/set-background", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ bg_url: newBg })
-      });
-    }
-
-    async function showHelp() {
-      const h = await fetchJSON("/help");
-      alert(
-        `${h.title}\n\n` +
-        `For: ${h.for}\n\n` +
-        h.rules.map((r,i)=>`${i+1}. ${r}`).join("\n")
-      );
-    }
-
-    // -----------------------
-    // EVENT LISTENERS
-    // -----------------------
-
-    // login submit
-    manualLoginBtn.addEventListener("click", manualLogin);
-    googleLoginBtn.addEventListener("click", () => {
-      // go to real Google OAuth
-      window.location.href = "/google-login";
+      chatDisplay.scrollTop = chatDisplay.scrollHeight;
     });
-
-    // new chat button
-    newChatBtn.addEventListener("click", createNewChat);
-
-    // send message
-    sendBtn.addEventListener("click", sendMessage);
-    chatInputEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-
-    // menu dropdown
-    menuBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      dropdownMenu.style.display = (dropdownMenu.style.display === "block") ? "none" : "block";
-    });
-    document.addEventListener("click", (e) => {
-      if (!dropdownMenu.contains(e.target) && e.target !== menuBtn) {
-        dropdownMenu.style.display = "none";
-      }
-    });
-
-    bgBtn.addEventListener("click", pickBackground);
-    helpBtn.addEventListener("click", showHelp);
-    logoutBtn.addEventListener("click", () => {
-      window.location.href = "/logout";
-    });
-
-    // plus / upload image
-    plusBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      plusMenu.style.display = (plusMenu.style.display === "block") ? "none" : "block";
-    });
-    document.addEventListener("click", (e) => {
-      if (!plusMenu.contains(e.target) && e.target !== plusBtn) {
-        plusMenu.style.display = "none";
-      }
-    });
-
-    uploadImgBtn.addEventListener("click", () => {
-      plusMenu.style.display = "none";
-      imgFileInput.value = "";
-      imgFileInput.click();
-    });
-
-    imgFileInput.addEventListener("change", async () => {
-      const f = imgFileInput.files && imgFileInput.files[0];
-      if (!f) return;
-      pendingImageFile = f;
-
-      // preview
-      pendingImagePreviewURL = URL.createObjectURL(f);
-
-      // upload it to server so it has a URL (this stores the file on /uploads)
-      const fd = new FormData();
-      fd.append("file", f);
-      const resp = await fetch("/upload-image", {
-        method: "POST",
-        body: fd
-      });
-      const data = await resp.json();
-      // we ARE storing the file but we are not yet sending that image to GPT-4o vision here.
-      // That will be /chat-image in a future step.
-
-      // we don't push anything else yet. We just hold pendingImageFile so sendMessage()
-      // can show the preview and then clear it.
-    });
-
-    // -----------------------
-    // INIT
-    // -----------------------
-    initSession();
   </script>
-
 </body>
 </html>
