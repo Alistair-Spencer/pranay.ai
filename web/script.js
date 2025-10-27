@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // ===== query all elements we need =====
+  // ===== grab DOM =====
   const signinBtn         = document.getElementById("signin-btn");
   const signinModal       = document.getElementById("signin-modal");
   const signinClose       = document.getElementById("signin-close");
@@ -16,28 +16,52 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatBox           = document.getElementById("chat-box");
   const loadingDots       = document.getElementById("loading-dots");
 
-  // --- helper to show / hide ---
-  function show(el) {
+  const imageFileInput    = document.getElementById("image-file-input");
+  const bgFileInput       = document.getElementById("bg-file-input");
+
+  const backgroundModal   = document.getElementById("background-modal");
+  const backgroundClose   = document.getElementById("background-close");
+  const bgUploadBtn       = document.getElementById("bg-upload-btn");
+
+  const prefsModal        = document.getElementById("prefs-modal");
+  const prefsClose        = document.getElementById("prefs-close");
+
+  const helpModal         = document.getElementById("help-modal");
+  const helpClose         = document.getElementById("help-close");
+
+  const signedInRow       = document.getElementById("signed-in-row");
+  const signedInEmail     = document.getElementById("signed-in-email");
+  const signinBtnText     = document.getElementById("signin-btn-text");
+  const onlineStatus      = document.getElementById("online-status");
+
+  // ===== helpers =====
+  function show(el) { if (el) el.classList.remove("hidden"); }
+  function hide(el) { if (el && !el.classList.contains("hidden")) el.classList.add("hidden"); }
+  function toggle(el) {
     if (!el) return;
-    el.classList.remove("hidden");
-  }
-  function hide(el) {
-    if (!el) return;
-    if (!el.classList.contains("hidden")) {
-      el.classList.add("hidden");
-    }
+    if (el.classList.contains("hidden")) { el.classList.remove("hidden"); }
+    else { el.classList.add("hidden"); }
   }
 
-  // initial state
-  hide(uploadMenu);
-  hide(settingsModal);
-  hide(signinModal);
+  // close all popovers/overlays
+  function closeAllFloating() {
+    hide(uploadMenu);
+    hide(settingsModal);
+    hide(signinModal);
+    hide(backgroundModal);
+    hide(prefsModal);
+    hide(helpModal);
+  }
+
+  // init state
+  closeAllFloating();
   hide(loadingDots);
 
-  // ===== SIGN-IN MODAL BEHAVIOR =====
+  // ===== SIGN-IN =====
   if (signinBtn) {
     signinBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      // open the sign-in modal
       show(signinModal);
     });
   }
@@ -49,15 +73,36 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // fake google login -> call backend, then mark UI as "signed in"
   if (googleLoginReal) {
     googleLoginReal.addEventListener("click", async (e) => {
       e.stopPropagation();
-      console.log("TODO: implement /google-login real OAuth call");
-      hide(signinModal);
+      try {
+        const resp = await fetch("/google-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: "fake_google_id_token_from_client" })
+        });
+        const data = await resp.json();
+
+        // pretend we're signed in:
+        // show email, change button text
+        if (data && data.jwt) {
+          signedInEmail.textContent = "user@example.com";
+          show(signedInRow);
+          signinBtnText.textContent = "Signed in";
+          onlineStatus.textContent = "Online";
+        }
+
+        hide(signinModal);
+      } catch (err) {
+        console.error("google login fail", err);
+        hide(signinModal);
+      }
     });
   }
 
-  // close sign-in if you click the dark background outside the card
+  // clicking outside the sign-in card closes it
   if (signinModal) {
     signinModal.addEventListener("click", (e) => {
       const card = signinModal.querySelector(".overlay-card");
@@ -67,66 +112,190 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ===== PLUS BUTTON (UPLOAD MENU) =====
+  // ===== PLUS / UPLOAD MENU =====
   if (plusButton) {
     plusButton.addEventListener("click", (e) => {
       e.stopPropagation();
-      // toggle upload menu
-      if (uploadMenu.classList.contains("hidden")) {
-        hide(settingsModal); // only one menu open at a time
-        show(uploadMenu);
-      } else {
-        hide(uploadMenu);
+      // open/close upload menu, close other menus
+      hide(settingsModal);
+      toggle(uploadMenu);
+    });
+  }
+
+  // upload image option -> open file picker
+  const uploadImageTrigger = document.getElementById("upload-image-trigger");
+  if (uploadImageTrigger) {
+    uploadImageTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hide(uploadMenu);
+      if (imageFileInput) {
+        imageFileInput.click();
       }
     });
   }
 
-  // ===== TOP RIGHT MENU (SETTINGS) =====
+  // listen for chosen image
+  if (imageFileInput) {
+    imageFileInput.addEventListener("change", () => {
+      const file = imageFileInput.files && imageFileInput.files[0];
+      if (!file) return;
+      // just preview it in chat for now
+      const url = URL.createObjectURL(file);
+      appendImageMessage("You", url);
+    });
+  }
+
+  // custom background option -> open background modal
+  const customBgTrigger = document.getElementById("custom-bg-trigger");
+  if (customBgTrigger) {
+    customBgTrigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hide(uploadMenu);
+      show(backgroundModal);
+    });
+  }
+
+  // ===== ⋯ / SETTINGS MENU =====
   if (menuButton) {
     menuButton.addEventListener("click", (e) => {
       e.stopPropagation();
-      // toggle settings menu
-      if (settingsModal.classList.contains("hidden")) {
-        hide(uploadMenu);
-        show(settingsModal);
-      } else {
+      hide(uploadMenu);
+      toggle(settingsModal);
+    });
+  }
+
+  // settings popover actions
+  if (settingsModal) {
+    settingsModal.addEventListener("click", (e) => {
+      const target = e.target.closest(".popover-item");
+      if (!target) return;
+
+      const action = target.getAttribute("data-action");
+
+      if (action === "open-settings") {
         hide(settingsModal);
+        show(prefsModal);
+      } else if (action === "open-background") {
+        hide(settingsModal);
+        show(backgroundModal);
+      } else if (action === "open-help") {
+        hide(settingsModal);
+        show(helpModal);
+      } else if (action === "sign-out") {
+        // reset fake login state
+        hide(settingsModal);
+        signedInEmail.textContent = "";
+        hide(signedInRow);
+        signinBtnText.textContent = "Sign in with Google";
+        onlineStatus.textContent = "Online";
       }
     });
   }
 
-  // ===== GLOBAL CLICK TO CLOSE MENUS =====
+  // clicking outside popovers closes them
   document.addEventListener("click", (e) => {
-    // don't close if click is actually inside these popovers/buttons
-    const clickedUploadMenu   = uploadMenu && uploadMenu.contains(e.target);
-    const clickedPlusButton   = plusButton && plusButton.contains(e.target);
-    const clickedSettingsMenu = settingsModal && settingsModal.contains(e.target);
-    const clickedMenuButton   = menuButton && menuButton.contains(e.target);
+    const clickInUpload   = uploadMenu.contains(e.target);
+    const clickInPlusBtn  = plusButton.contains(e.target);
+    const clickInSettings = settingsModal.contains(e.target);
+    const clickInMenuBtn  = menuButton.contains(e.target);
 
-    if (!clickedUploadMenu && !clickedPlusButton) {
+    if (!clickInUpload && !clickInPlusBtn) {
       hide(uploadMenu);
     }
-    if (!clickedSettingsMenu && !clickedMenuButton) {
+    if (!clickInSettings && !clickInMenuBtn) {
       hide(settingsModal);
     }
   });
 
-  // ===== SEND MESSAGE TO BACKEND =====
+  // ===== BACKGROUND MODAL =====
+  if (backgroundClose) {
+    backgroundClose.addEventListener("click", () => {
+      hide(backgroundModal);
+    });
+  }
+  if (backgroundModal) {
+    // close if you click dim outside card
+    backgroundModal.addEventListener("click", (e) => {
+      const card = backgroundModal.querySelector(".overlay-card");
+      if (!card.contains(e.target)) {
+        hide(backgroundModal);
+      }
+    });
+
+    // click a preset tile
+    backgroundModal.querySelectorAll(".bg-choice").forEach(tile => {
+      tile.addEventListener("click", () => {
+        const bgUrl = tile.getAttribute("data-bg");
+        setBackground(bgUrl);
+        hide(backgroundModal);
+      });
+    });
+  }
+
+  // Upload your own background button
+  if (bgUploadBtn) {
+    bgUploadBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (bgFileInput) {
+        bgFileInput.click();
+      }
+    });
+  }
+
+  if (bgFileInput) {
+    bgFileInput.addEventListener("change", () => {
+      const file = bgFileInput.files && bgFileInput.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      setBackground(url);
+      hide(backgroundModal);
+    });
+  }
+
+  function setBackground(url) {
+    // apply background to the whole app shell
+    const root = document.getElementById("app-root");
+    root.style.backgroundImage = `url('${url}')`;
+  }
+
+  // ===== PREFS MODAL (Settings) =====
+  if (prefsClose) {
+    prefsClose.addEventListener("click", () => hide(prefsModal));
+  }
+  if (prefsModal) {
+    prefsModal.addEventListener("click", (e) => {
+      const card = prefsModal.querySelector(".overlay-card");
+      if (!card.contains(e.target)) {
+        hide(prefsModal);
+      }
+    });
+  }
+
+  // ===== HELP MODAL =====
+  if (helpClose) {
+    helpClose.addEventListener("click", () => hide(helpModal));
+  }
+  if (helpModal) {
+    helpModal.addEventListener("click", (e) => {
+      const card = helpModal.querySelector(".overlay-card");
+      if (!card.contains(e.target)) {
+        hide(helpModal);
+      }
+    });
+  }
+
+  // ===== CHAT SEND =====
   async function sendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
 
-    // clear input box
     userInput.value = "";
 
-    // hide menus just in case
     hide(uploadMenu);
     hide(settingsModal);
 
-    // show typing dots
     show(loadingDots);
 
-    // append user bubble instantly
     appendMessage("You", text);
 
     try {
@@ -141,7 +310,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
 
       const data = await resp.json();
-
       hide(loadingDots);
 
       if (resp.ok) {
@@ -156,7 +324,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // clicking send
+  // send on click
   if (sendButton) {
     sendButton.addEventListener("click", (e) => {
       e.preventDefault();
@@ -164,7 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // pressing Enter
+  // send on Enter
   if (userInput) {
     userInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
@@ -174,15 +342,32 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // helper to append chat bubbles
+  // ===== message helpers =====
   function appendMessage(sender, text) {
     const bubble = document.createElement("div");
     bubble.className = sender === "You" ? "user-msg" : "bot-msg";
     bubble.textContent = text;
-
     chatBox.appendChild(bubble);
+    scrollToBottom();
+  }
 
-    // auto-scroll chat pane to bottom
+  function appendImageMessage(sender, imgURL) {
+    const wrapper = document.createElement("div");
+    wrapper.className = sender === "You" ? "user-msg" : "bot-msg";
+
+    const img = document.createElement("img");
+    img.src = imgURL;
+    img.alt = "uploaded";
+    img.style.maxWidth = "200px";
+    img.style.borderRadius = "6px";
+    img.style.display = "block";
+
+    wrapper.appendChild(img);
+    chatBox.appendChild(wrapper);
+    scrollToBottom();
+  }
+
+  function scrollToBottom() {
     const scrollArea = document.getElementById("chat-scroll");
     scrollArea.scrollTop = scrollArea.scrollHeight;
   }
