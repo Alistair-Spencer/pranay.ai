@@ -46,7 +46,7 @@
       <div id="sidebar-footer">
         <button id="signin-btn" class="signin-btn">
           <img class="google-icon" src="/static/google-icon.png" alt="G" />
-          <span id="signin-btn-text">Sign in with Google</span>
+          <span id="signin-btn-text">Sign in</span>
         </button>
       </div>
     </aside>
@@ -58,7 +58,7 @@
       <button id="menu-button" class="icon-btn" title="Menu">⋯</button>
 
       <!-- ⋯ popover -->
-      <div id="settings-modal" class="popover hidden">
+      <div id="settings-popover" class="popover hidden">
         <div class="popover-item" data-action="open-settings">Settings</div>
         <div class="popover-item" data-action="open-background">Background</div>
         <div class="popover-item" data-action="open-help">Help</div>
@@ -83,11 +83,9 @@
         <!-- + button -->
         <button id="plus-button" class="icon-btn" title="More">+</button>
 
-        <!-- plus popover -->
-        <div id="upload-menu" class="popover hidden">
+        <!-- plus popover (JUST upload image now) -->
+        <div id="upload-popover" class="popover hidden">
           <div class="popover-item" id="upload-image-trigger">Upload image</div>
-          <div class="popover-divider"></div>
-          <div class="popover-item" id="custom-bg-trigger">Custom background</div>
         </div>
 
         <!-- hidden file inputs -->
@@ -110,7 +108,7 @@
 
   <!-- ========= SIGN-IN MODAL ========= -->
   <div id="signin-modal" class="overlay hidden">
-    <div class="overlay-card">
+    <div class="overlay-card wide-card">
       <div class="overlay-card-header">
         <div class="overlay-title">Sign in</div>
         <button class="overlay-close" id="signin-close">✕</button>
@@ -118,17 +116,31 @@
 
       <div class="overlay-body">
         <p class="overlay-body-main">
-          Sign in with Google to save chats to your account and access them from any device.
+          Sign in to save chats to your account and access them from any device.
         </p>
 
-        <button class="google-big-btn" id="google-login-real">
+        <button class="google-big-btn" id="google-login-btn">
           <img class="google-icon" src="/static/google-icon.png" alt="Google"/>
           <span>Continue with Google</span>
         </button>
 
+        <div class="signin-divider-row">
+          <div class="signin-divider-line"></div>
+          <div class="signin-divider-text">or</div>
+          <div class="signin-divider-line"></div>
+        </div>
+
+        <div class="signin-email-block">
+          <label class="signin-label">Email</label>
+          <input id="login-email" class="signin-input" type="email" placeholder="you@example.com" />
+          <label class="signin-label signin-password-label">Password</label>
+          <input id="login-pass" class="signin-input" type="password" placeholder="••••••••" />
+          <button class="neutral-btn full-btn" id="email-login-btn">Sign in with email</button>
+        </div>
+
         <p class="overlay-body-foot">
-          By continuing, you agree to the responsible use policy.
-          Do not use responses as graded work without teacher permission.
+          By continuing, you agree to responsible use.  
+          Do not submit AI output as graded work without teacher permission.
         </p>
       </div>
     </div>
@@ -144,15 +156,12 @@
 
       <div class="overlay-body">
         <div class="bg-grid">
-          <!-- preset 1 -->
           <div class="bg-choice" data-bg="/static/bg1.jpg" style="background-image:url('/static/bg1.jpg')">
             <div class="bg-choice-label">Purple glow</div>
           </div>
-          <!-- preset 2 -->
           <div class="bg-choice" data-bg="/static/bg2.jpg" style="background-image:url('/static/bg2.jpg')">
             <div class="bg-choice-label">Blue tech</div>
           </div>
-          <!-- preset 3 -->
           <div class="bg-choice" data-bg="/static/bg3.jpg" style="background-image:url('/static/bg3.jpg')">
             <div class="bg-choice-label">Abstract shapes</div>
           </div>
@@ -163,13 +172,13 @@
         </div>
 
         <p class="overlay-body-foot smaller-foot">
-          Backgrounds are just visual. Keep work school-appropriate.
+          Keep backgrounds school-appropriate.
         </p>
       </div>
     </div>
   </div>
 
-  <!-- ========= SETTINGS MODAL (REAL CONTENT) ========= -->
+  <!-- ========= SETTINGS MODAL ========= -->
   <div id="prefs-modal" class="overlay hidden">
     <div class="overlay-card">
       <div class="overlay-card-header">
@@ -179,10 +188,10 @@
 
       <div class="overlay-body">
         <p class="overlay-body-main">
-          Coming soon: model choice, data retention toggle, etc.
+          Future: model quality, data retention, voice, etc.
         </p>
         <p class="overlay-body-foot">
-          Right now: PranayAI may make mistakes. Double-check important answers.
+          For now: PranayAI may be wrong sometimes. Double-check important stuff.
         </p>
       </div>
     </div>
@@ -198,15 +207,17 @@
 
       <div class="overlay-body">
         <p class="overlay-body-main">
-          PranayAI is here to help you understand, study, and learn.  
-          You are responsible for how you use answers.  
-          Do not turn in AI responses as graded work without teacher approval.  
-          Do not use this to cheat on tests, quizzes, or assignments at Poway Unified.  
-          Use it like a tutor, not a replacement for your own work.
+          PranayAI is here to help you understand, study, and learn.
+          
+          Do not use this to cheat on tests, quizzes, or assignments
+          at Poway Unified. Use this like a tutor.
+          
+          Do not turn in AI responses as graded work unless a teacher
+          says it's allowed.
         </p>
         <p class="overlay-body-foot smaller-foot">
-          If you see something unsafe or you feel pressured to break rules, stop using
-          the tool and talk to a teacher or staff member.
+          If you see unsafe content or something that violates school rules,
+          stop using the tool and talk to a teacher or staff member.
         </p>
       </div>
     </div>

@@ -19,7 +19,6 @@ body {
 
 .hidden { display: none !important; }
 
-/* ===== LAYOUT WRAPPER ===== */
 #app-root {
   display: flex;
   width: 100%;
@@ -29,7 +28,7 @@ body {
   background-repeat: no-repeat;
 }
 
-/* ===== SIDEBAR ===== */
+/* === SIDEBAR === */
 #sidebar {
   width: 260px;
   background-color: rgba(26,26,26,0.9);
@@ -74,28 +73,24 @@ body {
   gap: 6px;
   flex-wrap: wrap;
 }
-
 .brand-name {
   color: #fff;
   font-size: 15px;
   font-weight: 600;
   line-height: 1.2;
 }
-
 .status-dot {
   width: 8px;
   height: 8px;
   background-color: #24c65f;
   border-radius: 50%;
 }
-
 .status-text {
   color: #24c65f;
   font-size: 12px;
   line-height: 1.2;
   font-weight: 500;
 }
-
 .signed-in-row {
   margin-top: 4px;
   color: #9b9b9b;
@@ -146,7 +141,6 @@ body {
   max-height: calc(100vh - 220px);
   border-radius: 6px;
 }
-
 .chat-list-item {
   background-color: transparent;
   color: #d8d8d8;
@@ -189,7 +183,6 @@ body {
   background-color: #333;
   border-color: #4a4a4a;
 }
-
 .google-icon {
   width: 16px;
   height: 16px;
@@ -199,7 +192,7 @@ body {
   padding: 2px;
 }
 
-/* ===== MAIN AREA ===== */
+/* === MAIN === */
 #main {
   flex: 1;
   position: relative;
@@ -220,13 +213,14 @@ body {
   cursor: pointer;
   padding: 6px 8px;
   border-radius: 6px;
+  z-index: 500;
 }
 #menu-button:hover {
   background-color: #333;
   color: #fff;
 }
 
-/* popover bubbles */
+/* popovers */
 .popover {
   display: flex;
   flex-direction: column;
@@ -236,14 +230,14 @@ body {
   border-radius: 8px;
   min-width: 180px;
   box-shadow: 0 20px 40px rgba(0,0,0,0.8);
-  z-index: 400;
+  z-index: 600;
 }
-#settings-modal {
+#settings-popover {
   position: absolute;
   top: 42px;
   right: 16px;
 }
-#upload-menu {
+#upload-popover {
   position: absolute;
   bottom: 58px;
   left: 16px;
@@ -257,14 +251,16 @@ body {
 .popover-item:hover {
   background-color: #2a2a2a;
 }
-.danger { color: #ff6666; }
+.danger {
+  color: #ff6666;
+}
 .popover-divider {
   height: 1px;
   background-color: #2a2a2a;
   margin: 6px 0;
 }
 
-/* chat scroll area */
+/* chat area */
 #chat-scroll {
   flex: 1;
   min-height: 0;
@@ -307,7 +303,6 @@ body {
   border: 1px solid rgba(42,42,42,.9);
 }
 
-/* typing dots */
 #loading-dots {
   display: flex;
   flex-direction: row;
@@ -326,13 +321,12 @@ body {
 }
 .dot:nth-child(2){ animation-delay:.2s; }
 .dot:nth-child(3){ animation-delay:.4s; }
-
 @keyframes blink {
   0%,100% { opacity:0.4; }
-  50% { opacity:1; }
+  50%     { opacity:1; }
 }
 
-/* input bar */
+/* bottom bar */
 #input-bar {
   position: absolute;
   left: 0;
@@ -348,7 +342,6 @@ body {
   gap: 10px;
 }
 
-/* + and ⋯ shared style */
 .icon-btn {
   border: 1px solid #3a3a3a;
   background-color: rgba(42,42,42,.8);
@@ -365,7 +358,6 @@ body {
   color: #fff;
 }
 
-/* inputs */
 #user-input {
   flex: 1;
   background-color: rgba(42,42,42,.8);
@@ -383,7 +375,6 @@ body {
   background-color: rgba(47,47,47,.9);
 }
 
-/* send */
 .send-btn {
   border: 1px solid #3a3a3a;
   background-color: #3a3a3a;
@@ -399,7 +390,7 @@ body {
   border-color: #5a5a5a;
 }
 
-/* overlays (sign-in, background picker, prefs, help) */
+/* overlays */
 .overlay {
   position: fixed;
   inset: 0;
@@ -470,7 +461,7 @@ body {
   color: #777;
 }
 
-/* google sign-in button big version */
+/* google button */
 .google-big-btn {
   background-color: #fff;
   color: #000;
@@ -490,7 +481,68 @@ body {
   background-color: #e9e9e9;
 }
 
-/* background picker layout */
+/* sign in with email block */
+.signin-divider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.signin-divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: #2a2a2a;
+}
+.signin-divider-text {
+  font-size: 12px;
+  color: #777;
+}
+.signin-email-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.signin-label {
+  font-size: 12px;
+  color: #bbb;
+  font-weight: 500;
+}
+.signin-password-label {
+  margin-top: 4px;
+}
+.signin-input {
+  background-color: rgba(42,42,42,.8);
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  padding: 8px 10px;
+  outline: none;
+}
+.signin-input:focus {
+  border-color: #4a4a4a;
+  background-color: rgba(47,47,47,.9);
+}
+.full-btn {
+  width: 100%;
+  text-align: center;
+}
+
+/* neutral button reuse */
+.neutral-btn {
+  background-color: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  color: #eaeaea;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.neutral-btn:hover {
+  background-color: #333;
+  border-color: #4a4a4a;
+}
+
+/* background picker */
 .bg-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit,minmax(130px,1fr));
@@ -521,27 +573,13 @@ body {
   padding: 3px 6px;
   border-radius: 4px;
 }
-
 .bg-upload-row {
   margin-top: 8px;
   display: flex;
   justify-content: flex-start;
 }
-.neutral-btn {
-  background-color: #2a2a2a;
-  border: 1px solid #3a3a3a;
-  color: #eaeaea;
-  font-size: 13px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.neutral-btn:hover {
-  background-color: #333;
-  border-color: #4a4a4a;
-}
 
-/* scrollbar */
+/* scrollbars */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-thumb {
   background-color: #2a2a2a;
